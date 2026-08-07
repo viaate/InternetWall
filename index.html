@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Wall">
+<meta name="robots" content="noindex">
+<title>The Wall</title>
+
+<!-- ======================================================================
+     A wall-mounted iPad that pretends to be part of the wall next to it.
+
+     Runs on an iPad Air 4 (A14, 1180x820pt landscape). Built and tested on an
+     iPad Pro 11 M5, which is 1210x834 — under 1% different, so there is one
+     fluid layout and no device branching anywhere in here.
+
+     Two rules this file never breaks:
+
+     1. NOTHING NAVIGATES. No <a href>, no location writes, no hash routing.
+        Every view is a class on <body>. A navigation inside Guided Access is
+        unrecoverable without unlocking the iPad, so there are simply no links:
+        references to outside things are printed as text you type in yourself.
+
+     2. NOTHING IS FETCHED. No CDN, no web font, no analytics, no YouTube embed.
+        Everything is this file plus art/ and slab/. Works in airplane mode.
+
+     The slab chapter data below is lifted verbatim from the slab site in the
+     sibling repo. That copy was already written and already good; it is reused
+     rather than rewritten.
+     ====================================================================== -->
+
+<style>
+:root{
+  /* --------------------------------------------------------------------
+     THE ONLY LINE YOU ARE LIKELY TO WANT TO CHANGE.
+
+     Sampled from the room photo and white-balanced against the ceiling and
+     the door trim, which read as neutral. Three separate patches of wall all
+     landed within one step of this, so it is a real measurement rather than
+     a guess — but it is a measurement off a warm-lit phone photo, so treat it
+     as a good starting point and not gospel. The settings panel (long-press
+     bare wall) can nudge it live, and whatever you set there wins.
+     -------------------------------------------------------------------- */
+  --wall: #c6d1cf;
+
+  --pink:#ff2e88;
+  --yellow:#ffe600;
+  --navy:#0b2e5b;
+  --red:#e31837;
+  --ink:#111;
+
+  --ease:cubic-bezier(.2,.7,.25,1);
+
+  /* Frames hang the same distance off the wall whatever size they are, so the
+     shadow is one shared value in viewport units rather than per-piece. */
+  --lift: .30vw;
+  --cast: .95vw;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--wall);
+  font:400 17px/1.55 Helvetica, Arial, sans-serif;
+  color:var(--ink);
+  -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
+}
+img{display:block;max-width:100%}
+button{font:inherit;color:inherit;margin:0}
+
+/* ============================ the wall ============================ */
+
+#wall{
+  position:fixed; inset:0;
+  background-color:var(--wall);
+  /* One baked tile. An feTurbulence filter here would be re-evaluated on every
+     repaint of this layer, which on the A14 is a real cost for something that
+     never changes. The tile is 512px shown at 256 so it lands 1:1 on device
+     pixels of a 2x panel and is never resampled. */
+  background-image:url(art/wall-texture.png);
+  background-size:256px 256px;
+  transition:opacity .9s var(--ease);
+}
+/* Broad undulation from the taping knife, plus the room's light falloff. Too
+   large a feature to live in the tile without the repeat becoming obvious. */
+#wall::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(120% 85% at 32% 18%, rgba(255,255,255,.085), transparent 62%),
+    radial-gradient(95% 70% at 88% 96%, rgba(0,0,0,.06), transparent 60%);
+}
+
+#plane{position:fixed; inset:0}
+
+.piece{
+  position:absolute;
+  left:var(--x); width:var(--w);
+  transition:transform .28s var(--ease), opacity .7s var(--ease);
+  transform:translateZ(0);
+}
+/* Frames are placed by their top edge. Ledges are placed by their bottom edge, so
+   the shelf line stays exactly where it was drilled no matter how tall whatever is
+   standing on it turns out to be. Swapping a placeholder for a real photo of the
+   loaded shelf then cannot move the shelf. */
+.piece.frame{top:var(--y)}
+.piece.ledge{bottom:var(--b)}
+.piece:active{transform:scale(.985)}
+
+/* ---------------- a framed picture, drawn rather than photographed ----------------
+   Moulding, mat, and a recessed opening. The whole illusion is three things:
+   the mat is lighter than the moulding, the moulding casts a hard little shadow
+   down onto the mat, and the print sits below the mat rather than on it. */
+.moulding{
+  padding:var(--mould, 5.4%);
+  border-radius:1.5px;
+  background:linear-gradient(157deg,#fff 0%,#faf9f5 34%,#efede5 72%,#e7e4da 100%);
+  box-shadow:
+    0 0 0 1px rgba(96,94,84,.34),
+    inset 0 1.5px 0 rgba(255,255,255,.98),
+    inset 0 -1.5px 0 rgba(0,0,0,.11),
+    inset 1.5px 0 0 rgba(255,255,255,.55),
+    inset -1.5px 0 0 rgba(0,0,0,.07),
+    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
+    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
+}
+.mat{
+  padding:var(--mat, 10%);
+  background:linear-gradient(162deg,#fdfdfa 0%,#f7f5ee 60%,#f1efe6 100%);
+  box-shadow:inset 0 .18vw .34vw rgba(0,0,0,.16);
+}
+.opening{
+  position:relative;
+  aspect-ratio:var(--ratio, 1.25);
+  overflow:hidden;
+  background:#ddd;
+  /* the cut edge of the mat board, lit from above */
+  box-shadow:
+    0 0 0 1px rgba(140,134,118,.55),
+    inset 0 .22vw .42vw rgba(0,0,0,.42),
+    inset 0 -.06vw .1vw rgba(255,255,255,.35);
+}
+.opening img{width:100%;height:100%;object-fit:cover}
+
+/* Deep box frame for the card frame and the Shrek print: shallow mat, print sits
+   further back, so the moulding is thinner and the opening shadow is stronger.
+   Named .deep and not .box on purpose — .box is the story panel's callout, and
+   when this was called .box the card frame inherited a 3px black border and a
+   pink drop shadow from it. */
+.piece.deep .mat{background:linear-gradient(160deg,#fcfcf9,#f2f0e8)}
+.piece.deep .opening{box-shadow:
+  0 0 0 1px rgba(140,134,118,.55),
+  inset 0 .3vw .55vw rgba(0,0,0,.5),
+  inset 0 -.06vw .1vw rgba(255,255,255,.3)}
+
+/* ---------------- picture ledge ---------------- */
+.ledge{--shelfh:1.5vw}
+.ledge .goods{
+  display:flex; align-items:flex-end; justify-content:center;
+  gap:.5vw; padding:0 .9vw;
+  min-height:7vw;
+}
+.ledge .goods img{
+  height:var(--goods-h, 11vw); width:auto; max-width:none;
+  box-shadow:0 var(--lift) calc(var(--lift)*1.4) rgba(42,48,42,.3);
+}
+.ledge .shelf{
+  height:var(--shelfh);
+  border-radius:0 0 2px 2px;
+  background:linear-gradient(#fdfdfb 0 38%, #f2f1eb 38% 70%, #e6e4dc 100%);
+  box-shadow:
+    0 0 0 1px rgba(96,94,84,.3),
+    inset 0 1px 0 rgba(255,255,255,.95),
+    0 var(--lift) calc(var(--lift)*1.6) rgba(42,48,42,.24),
+    0 var(--cast) calc(var(--cast)*1.9) rgba(42,48,42,.24);
+}
+
+/* Stand-in for an artifact whose photograph has not been taken yet. Deliberately
+   plain and obviously provisional: a bad fake is worse than an honest gap, and
+   this way nothing on the wall is ever pretending to be something it is not. */
+.todo{
+  aspect-ratio:var(--ratio, 1.25);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:.35em; text-align:center; padding:.6em;
+  border:.22vw dashed rgba(60,66,58,.42);
+  border-radius:2px;
+  background:rgba(255,255,255,.30);
+  color:rgba(38,44,38,.66);
+}
+.todo b{font:700 clamp(9px,.86vw,15px)/1.2 Helvetica,Arial,sans-serif;letter-spacing:.02em}
+.todo span{font:400 clamp(8px,.7vw,12px)/1.25 Helvetica,Arial,sans-serif;opacity:.8}
+.ledge .todo{width:100%}
+
+/* ============================ story panel ============================ */
+
+#story{
+  position:fixed; inset:0; z-index:40;
+  background:#fff;
+  transform:translateY(100%);
+  transition:transform .42s var(--ease);
+  display:flex; flex-direction:column;
+  visibility:hidden;
+}
+body.story-open #story{transform:none; visibility:visible}
+
+#storyTop{
+  flex:0 0 auto; display:flex; align-items:flex-start; gap:1rem;
+  padding:1.5rem 1.7rem 1.1rem; border-bottom:3px solid #000;
+}
+#storyTop .grow{flex:1 1 auto; min-width:0}
+.stamp{
+  display:inline-block; background:var(--pink); color:#fff;
+  font:400 15px/1 Impact,"Arial Narrow Bold","Arial Black",Helvetica,sans-serif;
+  letter-spacing:.06em; text-transform:uppercase;
+  padding:.35rem .6rem .3rem; transform:rotate(-1.5deg); margin-bottom:.55rem;
+}
+.stamp.big{background:var(--red); font-size:19px}
+#storyTop h1{
+  margin:0; font:900 clamp(1.5rem,3.1vw,2.4rem)/1.02 "Arial Black",Helvetica,Arial,sans-serif;
+  text-transform:uppercase; letter-spacing:-.02em;
+}
+#storyTop .facts{margin:.5rem 0 0; font-size:.9rem; color:#444}
+#storyTop .facts b{color:#111}
+
+.closebtn{
+  flex:0 0 auto; width:3.4rem; height:3.4rem; border:3px solid #000;
+  background:#fff; border-radius:0; cursor:pointer;
+  font:700 1.6rem/1 Helvetica,Arial,sans-serif;
+  box-shadow:4px 4px 0 var(--pink);
+}
+.closebtn:active{transform:translate(2px,2px); box-shadow:2px 2px 0 var(--pink)}
+
+#storyBody{
+  flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:1.6rem 1.7rem 3rem;
+}
+#storyBody.two{
+  display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+  gap:1.8rem; align-items:start;
+}
+.hero{border:3px solid #000; background:#000; overflow:hidden}
+.hero img{width:100%; height:auto}
+.prose{max-width:38rem}
+.prose p{margin:0 0 .95rem}
+.prose p:last-child{margin-bottom:0}
+.prose .mark{background:var(--yellow); padding:0 .15em}
+
+.box{
+  border:3px solid #000; padding:1rem 1.1rem; margin:1.5rem 0 0;
+  background:#fff; box-shadow:5px 5px 0 var(--pink);
+}
+.box.blue{box-shadow:5px 5px 0 var(--navy)}
+.box h3{
+  margin:0 0 .5rem;
+  font:400 19px/1.15 Impact,"Arial Narrow Bold","Arial Black",Helvetica,sans-serif;
+  letter-spacing:.04em; text-transform:uppercase;
+}
+.box p{margin:0 0 .6rem; font-size:.95rem}
+.box p:last-child{margin-bottom:0}
+.said{margin:1.2rem 0 0}
+.said q{background:var(--yellow); padding:.1em .2em; font-style:italic}
+.said cite{display:block; font-size:.82rem; color:#555; font-style:normal; margin-top:.35rem}
+
+/* References are printed, never linked, because a tap that navigates would strand
+   the kiosk outside the app. */
+.ref{
+  border-top:3px solid #000; margin-top:1.6rem; padding-top:.9rem;
+  font-size:.86rem; color:#333;
+}
+.ref div{margin-bottom:.5rem}
+.ref b{display:block; font-size:.9rem; color:#111}
+.ref code{
+  font:400 .82rem/1.4 ui-monospace,Menlo,Consolas,monospace;
+  background:#f2f2ee; padding:.1em .3em; word-break:break-all;
+}
+
+/* ============================ the saga ============================ */
+
+#storyBody.saga{max-width:none}
+.saga-wrap{width:min(46rem,100%); margin-inline:auto}
+.chapter{padding:0 0 2rem; border-bottom:3px solid #000; margin-bottom:2rem}
+.chapter:last-child{border-bottom:0}
+.chapter h2{margin:0; font:900 clamp(1.2rem,2.4vw,1.6rem)/1.1 Helvetica,Arial,sans-serif}
+.chapter .facts{margin:.45rem 0 1rem; font-size:.88rem; color:#444}
+.chapter .facts b{color:#111}
+
+/* One <video> exists at a time. Eight of them alive at once is fine on the M5 and
+   is a memory problem on the A14 — exactly the class of bug the dev iPad hides.
+   Each chapter shows a plate until tapped; the element is built on demand and the
+   previous one is torn down. */
+.plate{
+  position:relative; border:4px solid #000; background:#111;
+  aspect-ratio:16/9; width:100%; cursor:pointer; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.plate .tri{
+  width:5.2rem; height:3.6rem; background:var(--red); border-radius:.7rem;
+  display:flex; align-items:center; justify-content:center;
+}
+.plate .tri::after{
+  content:""; border-style:solid; border-width:.75rem 0 .75rem 1.3rem;
+  border-color:transparent transparent transparent #fff; margin-left:.25rem;
+}
+.plate:active .tri{background:var(--pink)}
+.plate .cap{
+  position:absolute; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,.72); color:#fff;
+  font:700 .82rem/1.3 Helvetica,Arial,sans-serif; padding:.45rem .6rem;
+}
+.frameV{border:4px solid #000; background:#000; display:flex; justify-content:center}
+.frameV video{width:100%; height:auto; max-height:58vh}
+.missing{
+  border:4px dashed #000; padding:1.6rem 1.2rem; text-align:center;
+  background:#fafaf7;
+}
+.missing b{display:block; font-size:1.02rem}
+.missing span{font-size:.88rem; color:#444}
+.gallery{display:grid; gap:.6rem; grid-template-columns:repeat(auto-fit,minmax(9rem,1fr))}
+.gallery img{width:100%; border:3px solid #000}
+
+.scores{padding:0 0 2rem; border-bottom:3px solid #000; margin-bottom:2rem}
+.scores .lede{font-size:.92rem; color:#444; margin:.3rem 0 1.1rem}
+.bar{display:grid; grid-template-columns:4.6rem 1fr 2.6rem; align-items:center;
+     gap:.5rem; margin-bottom:.4rem; font-size:.82rem}
+.bar .who{text-align:right; color:#444; white-space:nowrap}
+.bar .track{background:#f0f0f0; height:20px; border:1px solid #000; overflow:hidden}
+/* display:block matters: an inline box ignores width, so the fill renders as nothing. */
+.bar .fill{display:block; background:var(--pink); height:100%; width:0;
+           transition:width .9s var(--ease)}
+.bar.best .fill{background:var(--red)}
+.bar .n{font-weight:700; font-variant-numeric:tabular-nums; text-align:right}
+.guess{border:3px dashed #000; padding:1rem 1.1rem; margin:0 0 1.2rem}
+.guess p{margin:0 0 .7rem; font-weight:700}
+.guess .opts{display:flex; flex-wrap:wrap; gap:.4rem}
+.guess button{
+  font:700 .85rem Helvetica,Arial,sans-serif; padding:.45rem .75rem;
+  background:#fff; border:2px solid #000; cursor:pointer;
+}
+.guess button.picked{background:var(--pink); color:#fff; border-color:var(--pink)}
+.guess .verdict{margin:.9rem 0 0; font-weight:400}
+.guess .verdict b{background:var(--yellow); padding:0 .15em}
+
+/* ============================ idle ============================ */
+
+/* The brief was "after 15 minutes it picks the brightness that looks most like it
+   is not there and turns into the wall". Half of that is not possible: Safari has
+   no API for screen brightness, and no web page can dim an iPad's backlight. What
+   it can do is stop drawing anything and lay a calibrated scrim over the wall so
+   the panel's luminance matches the real drywall beside it. Set --dim once by eye
+   from the chair (long-press while idle) and it is saved. Pair it with iOS
+   auto-brightness off, or the panel will drift away from your setting by itself. */
+#dim{
+  position:fixed; inset:0; z-index:60; pointer-events:none;
+  background:#000; opacity:0;
+  transition:opacity 1.6s var(--ease);
+}
+body.idle #dim{opacity:var(--dim,.34)}
+body.idle #plane{opacity:0; pointer-events:none}
+body.idle #wall::after{opacity:.5}
+
+/* ============================ panels ============================ */
+
+.panel{
+  position:fixed; z-index:80; left:50%; top:50%;
+  transform:translate(-50%,-50%) scale(.96);
+  width:min(30rem,88vw);
+  background:#fff; border:3px solid #000; box-shadow:8px 8px 0 var(--pink);
+  padding:1.3rem 1.4rem; opacity:0; visibility:hidden;
+  transition:opacity .2s var(--ease), transform .2s var(--ease), visibility .2s;
+}
+.panel.on{opacity:1; visibility:visible; transform:translate(-50%,-50%) scale(1)}
+.panel h2{
+  margin:0 0 .3rem;
+  font:400 22px/1.1 Impact,"Arial Narrow Bold","Arial Black",Helvetica,sans-serif;
+  letter-spacing:.04em; text-transform:uppercase;
+}
+.panel .hint{font-size:.84rem; color:#555; margin:0 0 1rem}
+.row{margin:0 0 1rem}
+.row label{display:block; font-weight:700; font-size:.85rem; margin-bottom:.35rem}
+.row input[type=range]{width:100%}
+.row input[type=color]{width:3.4rem; height:2.2rem; padding:0; border:2px solid #000;
+                       background:#fff}
+.row .inline{display:flex; align-items:center; gap:.6rem; flex-wrap:wrap}
+.swatches{display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.5rem}
+.sw{
+  width:2.5rem; height:2.5rem; border:2px solid #000; cursor:pointer; padding:0;
+  position:relative;
+}
+.sw.on::after{content:"✓"; position:absolute; inset:0; display:flex;
+              align-items:center; justify-content:center;
+              font:700 1rem/1 Helvetica,Arial,sans-serif; color:#111;
+              text-shadow:0 0 3px #fff,0 0 3px #fff}
+.swname{font-size:.78rem; color:#555; margin-top:.4rem; min-height:1.1em}
+.panel .go{display:flex; gap:.6rem; margin-top:1.2rem}
+.panel .go button{
+  flex:1; padding:.7rem; border:3px solid #000; background:#fff;
+  font-weight:700; cursor:pointer;
+}
+.panel .go button.primary{background:var(--pink); color:#fff; border-color:var(--pink)}
+.val{font-variant-numeric:tabular-nums; font-weight:700}
+
+#scrim{
+  position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.35);
+  opacity:0; visibility:hidden; transition:opacity .2s, visibility .2s;
+}
+#scrim.on{opacity:1; visibility:visible}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="wall"></div>
+<div id="plane"></div>
+
+<div id="story" aria-hidden="true">
+  <div id="storyTop">
+    <div class="grow">
+      <div class="stamp" id="storyStamp"></div>
+      <h1 id="storyTitle"></h1>
+      <p class="facts" id="storyFacts"></p>
+    </div>
+    <button class="closebtn" id="storyClose" aria-label="Close">✕</button>
+  </div>
+  <div id="storyBody"></div>
+</div>
+
+<div id="dim"></div>
+<div id="scrim"></div>
+
+<div class="panel" id="settings">
+  <h2>Wall settings</h2>
+  <p class="hint">Long-press bare wall to get back here. Saved on this iPad only.</p>
+  <div class="row">
+    <label>Wall colour</label>
+    <div class="inline">
+      <input type="color" id="setColor">
+      <span class="val" id="setColorVal"></span>
+    </div>
+    <div class="swatches" id="swatches"></div>
+    <div class="swname" id="swName"></div>
+  </div>
+  <div class="row">
+    <label>Idle dimming — <span class="val" id="setDimVal"></span></label>
+    <input type="range" id="setDim" min="0" max="90" step="1">
+  </div>
+  <div class="row">
+    <label>Idle after — <span class="val" id="setIdleVal"></span></label>
+    <input type="range" id="setIdle" min="1" max="60" step="1">
+  </div>
+  <div class="go">
+    <button id="setReset">Reset</button>
+    <button id="setPreview">Preview idle</button>
+    <button class="primary" id="setDone">Done</button>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   THE WALL.
+
+   x / y / w are percentages of the panel. The height of a framed piece is
+   not given: it falls out of the artwork's aspect ratio plus the mat and
+   moulding widths, so a frame can never be set to the wrong shape by hand.
+
+   When the real hang is measured, this array is the only thing to edit.
+   ====================================================================== */
+
+const PIECES = [
+  {
+    key:'carter', type:'frame',
+    x:'3.5%', y:'10.2%', w:'24%',
+    art:'art/carter.jpg', ratio:1.25, mould:'5.2%', mat:'11%',
+    stamp:'june 2024',
+    title:'I turned up at CarterPCs’ house',
+    facts:'20 June 2024 &nbsp;·&nbsp; his driveway',
+    body:[
+      'Carter Smith makes tech videos as <b>CarterPCs</b>. I worked out where he lived, and I went.',
+      'He came out. We took this next to the Cybertruck. Then he posted it himself, captioned '+
+      '<q>Great meeting you @Charliethedog226 please dont leak my number/address</q>, which is '+
+      'simultaneously very generous and an extremely reasonable thing to ask of somebody who has '+
+      'just turned up at your house.',
+      'A second one went up shortly after called <q>Why I dont give fans free PCs</q>. I have '+
+      'decided not to take that personally.'
+    ],
+    refs:[
+      {b:'CarterPCs — “Great meeting you…”', t:'youtube.com/shorts/CsOaHKlU3rU'},
+      {b:'CarterPCs — “Why I dont give fans free PCs”', t:'youtube.com/shorts/7sIHuqe6-gY'}
+    ]
+  },
+  {
+    key:'cards', type:'frame', deep:true,
+    x:'32%', y:'17%', w:'19%',
+    art:'art/cards.jpg', ratio:2.05, mould:'4.6%', mat:'6%',
+    stamp:'the jack pack',
+    title:'Three cards out of a Jack Pack',
+    facts:'the middle one is signed',
+    body:[
+      'The <b>Jack Pack</b> is the bundle of merch JackSucksAtLife posts out to people. These are '+
+      'three of the cards from it.',
+      'The one in the middle he signed by hand. The frame is a three-opening trading card frame, '+
+      'which exists because enough people needed exactly this.'
+    ]
+  },
+  {
+    key:'shrek', type:'frame', deep:true,
+    x:'55.5%', y:'14.3%', w:'12.5%',
+    art:'art/shrek.jpg', ratio:0.8, mould:'5.4%', mat:'6.5%',
+    stamp:'the photo booth',
+    title:'Shrek’s Adventure, London',
+    facts:'the same booth',
+    body:[
+      'A photo booth at Shrek’s Adventure on the South Bank.',
+      'It is the same booth JackSucksAtLife stood in during <q>I Tried To Visit EVERY London '+
+      'Landmark in 24 Hours…</q>, where he was visibly, memorably uncomfortable about the whole '+
+      'situation.',
+      'So I went and stood in it too. <span class="mark">Same booth. Same discomfort. On purpose.</span>'
+    ],
+    refs:[
+      {b:'JackSucksAtLife — “I Tried To Visit EVERY London Landmark in 24 Hours…”',
+       t:'youtube.com/watch?v=RIsr05EOaQs'}
+    ]
+  },
+  {
+    key:'jen', type:'frame',
+    x:'72.5%', y:'10.2%', w:'24%',
+    art:'art/jen.jpg', ratio:1.25, mould:'5.2%', mat:'11%',
+    stamp:'golden, colorado',
+    title:'Outside GamingWithJen’s house',
+    facts:'Golden, Colorado',
+    body:[
+      'Jen, of <b>PopularMMOs</b>. The house is in Golden, Colorado.',
+      'I stood on the road and took a photograph of a house. That is the whole event.',
+      'It is the same impulse as the frame at the other end of this wall, stopped several steps '+
+      'earlier.'
+    ]
+  },
+  {
+    key:'booksL', type:'ledge',
+    x:'2.5%', b:'17.8%', w:'28%',
+    art:'art/books-left.jpg', goodsH:'12vw',
+    stamp:'signed first editions',
+    title:'Six PopularMMOs books',
+    facts:'all signed, all off eBay',
+    body:[
+      '<b>A Hole New World</b> (2018), <b>Enter the Mine</b> (2019), <b>Zombies’ Day Off</b> '+
+      '(2020), <b>Into the Overworld</b> (2021), <b>The End of All the Things</b> (2023), and the '+
+      '<b>A Hole New Activity Book</b>.',
+      'Signed first editions. I did not meet anybody to get these signed and I did not queue for '+
+      'them — I bought them on eBay, which I think is the honest thing to say about them.',
+      'They are still signed. The signature does not know how it got here.'
+    ]
+  },
+  {
+    key:'luton', type:'frame',
+    x:'35%', y:'49.8%', w:'30%',
+    art:'art/luton.jpg', ratio:1.42, mould:'4.4%', mat:'4%',
+    stamp:'a piece of the tarp',
+    title:'Welcome to Luton',
+    facts:'May 2022 &nbsp;·&nbsp; Max Fosh',
+    body:[
+      'In May 2022 <b>Max Fosh</b> laid out the words WELCOME TO LUTON in white tarpaulin letters, '+
+      'two hundred feet across, in a field underneath the final approach to <b>Gatwick</b>.',
+      'Gatwick is about seventy miles from Luton. The point was that if you were coming in to land, '+
+      'looked out of the window, and read the ground, you would work out that you were about to '+
+      'arrive at completely the wrong airport. It worked. He convinced the woman sitting behind him '+
+      'on the plane.',
+      'It cost him somewhere around four thousand pounds, he had the field owner’s permission to '+
+      'leave it up for six weeks, and at one point the BBC’s write-up of it was the most-read story '+
+      'on their entire website.',
+      '<span class="mark">This is a piece of that tarp.</span>'
+    ]
+  },
+  {
+    key:'booksR', type:'ledge', slab:true,
+    x:'69.5%', b:'17.8%', w:'28%',
+    art:'art/books-right.jpg', goodsH:'12vw',
+    stamp:'the slab',
+    title:'The thing in front of the books',
+    facts:'homemade &nbsp;·&nbsp; grade invented &nbsp;·&nbsp; signature real',
+    body:[
+      'Over about seven months I filmed my entire family saying hello to a YouTuber, one relative '+
+      'at a time. He watched every single one on his channel. Then he posted me a signed card, I '+
+      'posted him a signed play button, and a card grading company refused to have anything to do '+
+      'with any of it.',
+      'So I made the slab myself.'
+    ],
+    opensSaga:true
+  }
+];
+
+/* Sherwin-Williams greens-greys that actually turn up on walls like this one, so the
+   right answer can be found by eye from the chair rather than by typing hex codes. */
+const SWATCHES = [
+  ['#c6d1cf','measured off your room'],
+  ['#cdd5cd','SW 6204 Sea Salt'],
+  ['#c5ccc5','SW 7057 Silver Strand'],
+  ['#cbd5cd','SW 6211 Rainwashed'],
+  ['#c3ccc4','SW 6205 Comfort Gray'],
+  ['#d0d2cb','SW 6197 Aloof Gray'],
+  ['#b7bcb1','SW 6206 Oyster Bay'],
+  ['#adb3a6','SW 9132 Acacia Haze']
+];
+
+/* ======================================================================
+   THE SAGA. Lifted from the slab site in the sibling repo, unchanged apart
+   from media paths. Do not rewrite this copy; it was already right.
+   ====================================================================== */
+
+const SAGA = [
+  { key:'grandma', short:'grandma', title:'Jack my grandma wants to tell you something',
+    date:'3 January 2026', score:271, comments:21, video:'slab/media/01-grandma.mp4',
+    body:'No setup, no explanation, and absolutely no plan for it to become anything. The comments '
+        +'were mostly people insisting Jack had to see it. It took him ten days to get round to '
+        +'it, because he was on a break and there was no Reddit video that week.',
+    jack:{v:'CAvKpRMkXSk', t:1037} },
+  { key:'dad', short:'dad', title:'Jack my Dad wants to tell you something',
+    date:'24 January 2026', score:126, comments:21, video:'slab/media/02-dad.mp4',
+    body:'Three weeks later I did it again with my dad. This is the exact moment a one off quietly '
+        +'turns into a running bit, and the lowest scoring one of the whole run, which he has never '
+        +'been told. It is also the one where he stopped to admire the voice of my dad at some '
+        +'length, comparing it to a hot knife going through butter. The subreddit spent months '
+        +'arguing about whose relative that was. It was my dad.',
+    jack:{v:'DDvyeek9qLc', t:1247} },
+  { key:'mum', short:'mum', title:'Jack my mom wants to tell you something',
+    date:'30 January 2026', score:359, comments:45, video:'slab/media/03-mom.mp4',
+    body:'Six days after my dad, and nearly three times his score. By now people could tell what the '
+        +'post was from the title alone.',
+    jack:{v:'uezUNLa8pJc', t:129} },
+  { key:'sister', short:'sister', title:'Jack my sister wants to tell you something',
+    date:'5 February 2026', score:488, comments:79, video:'slab/media/04-sister.mp4',
+    body:'The biggest post of the entire saga, and the only one I actually sat down and edited. '
+        +'It was the top post of the week, so it opens his video rather than turning up somewhere '
+        +'in the middle of it.',
+    quote:'This took me too long to edit… hopefully yall get it', quoteWho:'me, in the caption',
+    jack:{v:'e7Y9BsxmgkU', t:21} },
+  { key:'dog', short:'the dog', title:'Jack my dog wants to tell you something',
+    date:'8 February 2026', score:235, comments:30, video:'slab/media/05-dog.mp4',
+    body:'This is Charlie. I had run out of humans, so I asked the subreddit for ideas and then paid '
+        +'an actual person on Fiverr to deliver the message on his behalf. At 79 seconds it is more '
+        +'than twice the length of anything else here, and it has a thank you card at the end. It is '
+        +'by an enormous distance the most produced thing in this entire saga.',
+    quote:'Special Thanks To @socialchrist on Fiverr',
+    quoteWho:'the credits, at the end of a video about a dog',
+    jack:{v:'RbsCG0Fh2EE', t:174} },
+  { key:'uncle', short:'uncle', title:'Jack my uncle wants to tell you something',
+    date:'16 February 2026', score:309, comments:48, video:'slab/media/06-uncle.mp4',
+    body:'Posted with advance warning that the end was coming. He introduces himself on camera '
+        +'as my uncle, which by that point needed no explanation whatsoever.',
+    quote:'Last one before the finale!!!', quoteWho:'me, in the caption',
+    jack:{v:'m1ngSHEso-4', t:119} },
+  { key:'finale', short:'THE FINALE', title:'Jack I want to tell you something (finale)',
+    date:'26 February 2026', score:148, comments:31, video:'slab/media/07-finale.mp4',
+    body:'Look at the title. Every other post in the saga is my something. This one is me. After ten '
+        +'weeks of pointing a camera at my relatives I finally had to be in one myself, which was '
+        +'considerably harder than it sounds.',
+    quote:'Still only one take, i would have redone this if I could haha', quoteWho:'me, in the caption',
+    finale:true, jack:{v:'eZid7JDPbmM', t:722} },
+  { key:'update', short:'a package arrives', title:'Jack my grandma wants to tell you something UPDATE',
+    date:'1 May 2026', score:122, comments:12, video:'slab/media/08-update.mp4',
+    body:'Two months after the finale, a package showed up from England. Inside was a Jack Pack, the '
+        +'bundle of merch he sends out, and a card he had signed for me by hand. I started filming '
+        +'before doing anything at all about my face or hair, which you will be able to tell.',
+    quote:'Ignore how chopped I look the second I saw I got the package I started filming this 😭. '
+         +'Thank you so much Jack - this means more than you could ever image to me',
+    quoteWho:'me, in the caption', jack:{v:'luSZf-umwPo', t:1033} },
+  { key:'playbutton', short:'the play button', title:'Jack opens the play button my whole family signed',
+    date:'12 May 2026', poster:'slab/photos/playbutton.jpg',
+    body:'Somewhere in the middle of all this I offered him the silver play button my entire family '
+        +'had signed. He turned it down, told me to keep it because it was a nice memory, and then '
+        +'asked for my address anyway, which is how the package above happened. So I posted him the '
+        +'play button regardless. He opened it on camera eleven days later.',
+    jack:{v:'W9Nnu55WXhs', t:196}, jackLabel:'Watch him open it, from 3:16',
+    box:{title:'What is a play button?',
+         html:'When a YouTube channel passes a subscriber milestone, YouTube posts them a metal '
+             +'plaque. Silver is one hundred thousand subscribers. Mine has my name on it, my '
+             +'family signed it all the way round the edge, and it is now in Sheffield.'} },
+  { key:'spoon', short:'a spoon', title:'Jack my anointing spoon wants to tell you something',
+    date:'25 May 2026', score:205, comments:17,
+    photos:['slab/photos/spoon-1.jpg','slab/photos/spoon-2.jpg','slab/photos/spoon-3.jpg',
+            'slab/photos/spoon-4.jpg'],
+    body:'An encore, and photos instead of a clip. An anointing spoon is a genuine object that Jack '
+        +'genuinely bought on camera, for no reason anyone has ever established, so obviously it was '
+        +'owed a turn.',
+    quote:'Ft. The new merch', quoteWho:'me, in the caption',
+    jack:{v:'MmrI9m67_MY', t:213} },
+  { key:'label', short:'the label', title:'Jack designs the label on the thing in your hand',
+    date:'28 July 2026', label:'slab/photos/slab-label.png',
+    body:'By this point I had decided to slab the card myself, and the subreddit had spent a week '
+        +'designing the label for it. Jack went through the design on camera, then drew his initials '
+        +'and a smiley face onto it. Both are printed on the label, which makes this the only part '
+        +'of the saga you can touch.',
+    jack:{v:'KVlYmWmvAlg', t:1242}, jackLabel:'Watch him draw on it, from 20:42', finale:true }
+];
+
+const CHART_NAME = { grandma:'grandma', dad:'dad', mum:'mum', sister:'sister', dog:'the dog',
+                     uncle:'uncle', finale:'finale', update:'the card', spoon:'the spoon' };
+
+/* ====================== small helpers ====================== */
+
+const $ = s => document.querySelector(s);
+const el = (t, cls, html) => {
+  const n = document.createElement(t);
+  if (cls) n.className = cls;
+  if (html != null) n.innerHTML = html;
+  return n;
+};
+const esc = s => String(s == null ? '' : s)
+  .replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mmss = s => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
+
+const byKey = k => PIECES.find(p => p.key === k);
+
+/* ====================== settings ====================== */
+
+const DEFAULTS = { wall:'#c6d1cf', dim:34, idleMin:15 };
+let cfg = Object.assign({}, DEFAULTS);
+
+function loadCfg(){
+  try {
+    const raw = localStorage.getItem('wall.cfg');
+    if (raw) cfg = Object.assign({}, DEFAULTS, JSON.parse(raw));
+  } catch (e) { /* private mode, or corrupt: defaults are fine */ }
+  applyCfg();
+}
+function saveCfg(){
+  try { localStorage.setItem('wall.cfg', JSON.stringify(cfg)); } catch (e) {}
+}
+function applyCfg(){
+  document.documentElement.style.setProperty('--wall', cfg.wall);
+  document.documentElement.style.setProperty('--dim', cfg.dim / 100);
+}
+
+/* ====================== build the wall ====================== */
+
+const plane = $('#plane');
+
+function artNode(src, ratio, label){
+  /* An <img> that quietly becomes an honest placeholder if the file is not there
+     yet, so the wall is never broken while photographs are still being taken. */
+  const wrap = el('div', 'opening');
+  if (ratio) wrap.style.setProperty('--ratio', ratio);
+  const img = el('img');
+  img.src = src;
+  img.alt = label || '';
+  img.decoding = 'async';
+  img.addEventListener('error', () => {
+    wrap.replaceWith(todoNode(ratio, label));
+  });
+  wrap.appendChild(img);
+  return wrap;
+}
+
+function todoNode(ratio, label){
+  const d = el('div', 'todo',
+    '<b>' + esc(label || 'artwork') + '</b><span>photo not added yet</span>');
+  if (ratio) d.style.setProperty('--ratio', ratio);
+  return d;
+}
+
+function buildPiece(p){
+  const node = el('div', 'piece ' + p.type + (p.deep ? ' deep' : ''));
+  node.style.setProperty('--x', p.x);
+  node.style.setProperty('--w', p.w);
+  if (p.y) node.style.setProperty('--y', p.y);
+  if (p.b) node.style.setProperty('--b', p.b);
+  node.dataset.key = p.key;
+
+  if (p.type === 'frame'){
+    if (p.mould) node.style.setProperty('--mould', p.mould);
+    if (p.mat) node.style.setProperty('--mat', p.mat);
+    const mould = el('div', 'moulding');
+    const mat = el('div', 'mat');
+    mat.appendChild(artNode(p.art, p.ratio, p.title));
+    mould.appendChild(mat);
+    node.appendChild(mould);
+  } else {
+    if (p.goodsH) node.style.setProperty('--goods-h', p.goodsH);
+    const goods = el('div', 'goods');
+    const img = el('img');
+    img.src = p.art;
+    img.alt = p.title;
+    img.addEventListener('error', () => {
+      goods.replaceChildren(todoNode(3.2, p.title));
+    });
+    goods.appendChild(img);
+    node.appendChild(goods);
+    node.appendChild(el('div', 'shelf'));
+  }
+
+  node.addEventListener('click', () => openStory(p.key));
+  return node;
+}
+
+PIECES.forEach(p => plane.appendChild(buildPiece(p)));
+
+/* ====================== the story panel ====================== */
+
+let currentVideo = null;
+
+function killVideo(){
+  if (!currentVideo) return;
+  /* Pausing is not enough. Clearing src and calling load() releases the decoder,
+     which is what actually matters on the A14 after a few clips. */
+  try {
+    currentVideo.pause();
+    currentVideo.removeAttribute('src');
+    currentVideo.load();
+  } catch (e) {}
+  currentVideo.remove();
+  currentVideo = null;
+}
+
+function openStory(key){
+  const p = byKey(key);
+  if (!p) return;
+
+  $('#storyStamp').textContent = p.stamp || '';
+  $('#storyTitle').textContent = p.title || '';
+  $('#storyFacts').innerHTML = p.facts || '';
+
+  const body = $('#storyBody');
+  body.className = '';
+  body.scrollTop = 0;
+  body.replaceChildren();
+
+  if (p.opensSaga){
+    body.classList.add('saga');
+    body.appendChild(buildSaga(p));
+  } else {
+    body.classList.add('two');
+    const hero = el('div', 'hero');
+    const img = el('img');
+    img.src = p.art;
+    img.alt = p.title;
+    img.addEventListener('error', () => hero.replaceWith(todoNode(p.ratio || 1.4, p.title)));
+    hero.appendChild(img);
+    body.appendChild(hero);
+
+    const prose = el('div', 'prose');
+    (p.body || []).forEach(t => prose.appendChild(el('p', null, t)));
+    if (p.refs && p.refs.length){
+      const r = el('div', 'ref');
+      r.appendChild(el('div', null, '<b>If you want to go and watch these</b>' +
+        '<span style="color:#666"> — type them in, this iPad deliberately cannot leave this app.</span>'));
+      p.refs.forEach(x => r.appendChild(
+        el('div', null, '<b>' + esc(x.b) + '</b><code>' + esc(x.t) + '</code>')));
+      prose.appendChild(r);
+    }
+    body.appendChild(prose);
+  }
+
+  document.body.classList.add('story-open');
+  $('#story').setAttribute('aria-hidden', 'false');
+}
+
+function closeStory(){
+  killVideo();
+  document.body.classList.remove('story-open');
+  $('#story').setAttribute('aria-hidden', 'true');
+}
+$('#storyClose').addEventListener('click', closeStory);
+
+/* ====================== the saga ====================== */
+
+function buildSaga(p){
+  const wrap = el('div', 'saga-wrap');
+
+  const intro = el('div', 'prose');
+  (p.body || []).forEach(t => intro.appendChild(el('p', null, t)));
+  intro.appendChild(el('div', 'box',
+    '<h3>Hang on, what is a slab?</h3>' +
+    '<p>Collectors send valuable cards to a company called <b>PSA</b>. They check the card is ' +
+    'genuine, grade its condition from 1 to 10, and seal it in a hard plastic case with a printed ' +
+    'label on it. That sealed case is a slab.</p>' +
+    '<p>The one on the shelf is not one of theirs. PSA will not authenticate a signature unless ' +
+    'the signer is on their list of people worth authenticating, and Jack, staggeringly, is not ' +
+    'on that list. So the case is homemade, the grade is invented, the serial number means ' +
+    'nothing at all, and the signature is completely real — which I would argue is the only part ' +
+    'that was ever going to matter.</p>'));
+  intro.appendChild(el('div', 'box blue',
+    '<h3>Wait, who is Jack?</h3>' +
+    '<p><b>Jack Massey Welsh</b> posts as <b>JackSucksAtLife</b>. His second channel puts out a ' +
+    'weekly video where he scrolls through his own fan subreddit and reacts to whatever people ' +
+    'posted that week. That weekly video is the entire reason any of this happened.</p>' +
+    '<p>There is no way to submit anything to him. You just have to post something good enough ' +
+    'that it reaches the top that week.</p>'));
+  wrap.appendChild(intro);
+
+  const core = SAGA.filter(c => !['spoon','label'].includes(c.key));
+  const extra = SAGA.filter(c => ['spoon','label'].includes(c.key));
+
+  core.forEach((ch, i) => {
+    wrap.appendChild(chapter(ch, i + 1, core.length));
+    if (ch.key === 'finale') wrap.appendChild(scoreboard());
+  });
+  extra.forEach((ch, i) => wrap.appendChild(chapter(ch, i + 1, extra.length, true)));
+  return wrap;
+}
+
+function chapter(ch, n, total, isExtra){
+  const sec = el('section', 'chapter');
+  const stampText = ch.key === 'finale' ? 'the finale'
+                  : isExtra ? 'extra ' + n + ' of ' + total
+                  : 'part ' + n + ' of ' + total;
+  sec.appendChild(el('div', 'stamp' + (ch.finale ? ' big' : ''), esc(stampText)));
+  sec.appendChild(el('h2', null, esc(ch.title)));
+
+  let facts = esc(ch.date);
+  if (typeof ch.score === 'number') facts += ' &nbsp;·&nbsp; <b>' + ch.score + '</b> upvotes';
+  if (typeof ch.comments === 'number') facts += ' &nbsp;·&nbsp; <b>' + ch.comments + '</b> comments';
+  sec.appendChild(el('p', 'facts', facts));
+
+  if (ch.video){
+    sec.appendChild(videoPlate(ch));
+  } else if (ch.poster){
+    const plate = el('div', 'plate');
+    const img = el('img');
+    img.src = ch.poster;
+    img.alt = '';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;opacity:.8';
+    img.addEventListener('error', () => img.remove());
+    plate.appendChild(img);
+    plate.appendChild(el('span', 'cap',
+      'This one is on YouTube, and this iPad is offline on purpose'));
+    sec.appendChild(plate);
+  } else if (ch.label){
+    const box = el('div', 'hero');
+    const img = el('img'); img.src = ch.label; img.alt = 'The finished slab label.';
+    img.addEventListener('error', () => box.replaceWith(missing('the label artwork')));
+    box.appendChild(img);
+    sec.appendChild(box);
+  } else if (ch.photos){
+    const g = el('div', 'gallery');
+    let alive = 0;
+    ch.photos.forEach(src => {
+      const img = el('img'); img.src = src; img.loading = 'lazy'; img.alt = ch.title;
+      img.addEventListener('error', () => { img.remove(); if (--alive === 0) g.replaceWith(missing('these photos')); });
+      alive++; g.appendChild(img);
+    });
+    sec.appendChild(g);
+  }
+
+  sec.appendChild(el('p', null, esc(ch.body)));
+  if (ch.quote){
+    sec.appendChild(el('p', 'said',
+      '<q>' + esc(ch.quote) + '</q><cite>' + esc(ch.quoteWho || '') + '</cite>'));
+  }
+  if (ch.box){
+    sec.appendChild(el('div', 'box',
+      '<h3>' + esc(ch.box.title) + '</h3><p>' + ch.box.html + '</p>'));
+  }
+  if (ch.jack && ch.jack.v){
+    const label = ch.jackLabel || ('Jack’s reaction, from ' + mmss(ch.jack.t || 0));
+    sec.appendChild(el('div', 'ref',
+      '<div><b>' + esc(label) + '</b><code>youtube.com/watch?v=' + esc(ch.jack.v) +
+      '&t=' + (ch.jack.t || 0) + 's</code></div>'));
+  }
+  return sec;
+}
+
+function missing(what){
+  return el('div', 'missing',
+    '<b>' + esc(what) + ' is not here</b><span>everything else still works</span>');
+}
+
+function videoPlate(ch){
+  const plate = el('div', 'plate');
+  plate.appendChild(el('span', 'tri'));
+  plate.appendChild(el('span', 'cap', esc(ch.short) + ' — tap to play, out loud'));
+  plate.addEventListener('click', () => {
+    killVideo();
+    const holder = el('div', 'frameV');
+    const v = document.createElement('video');
+    v.src = ch.video;
+    v.controls = true;
+    v.preload = 'none';
+    v.playsInline = true;
+    v.setAttribute('playsinline', '');
+    v.setAttribute('aria-label', ch.title);
+    /* Not muted, and started from a tap, which is the gesture iOS wants before it
+       will let audio out. So no unmute step is ever shown to anybody. */
+    v.addEventListener('error', () => holder.replaceWith(missing('this clip')));
+    holder.appendChild(v);
+    plate.replaceWith(holder);
+    currentVideo = v;
+    v.play().catch(() => { /* left paused with controls: still usable */ });
+  });
+  return plate;
+}
+
+function scoreboard(){
+  const rows = SAGA.filter(c => typeof c.score === 'number');
+  const max = Math.max(...rows.map(c => c.score));
+  const winner = rows.find(c => c.score === max);
+  const sec = el('section', 'scores');
+
+  sec.appendChild(el('div', 'stamp', 'the numbers'));
+  sec.appendChild(el('h2', null, 'How each one actually did'));
+  sec.appendChild(el('p', 'lede', 'Upvotes on Reddit, which was the only scoreboard that existed.'));
+
+  const guess = el('div', 'guess',
+    '<p>Before you look: which one do you reckon did best?</p><div class="opts">' +
+    rows.map(c => '<button type="button" data-key="' + c.key + '">' +
+      esc(CHART_NAME[c.key] || c.short) + '</button>').join('') +
+    '<button type="button" data-key="_skip">just show me</button></div>' +
+    '<p class="verdict" hidden></p>');
+  sec.appendChild(guess);
+
+  rows.forEach(c => {
+    sec.appendChild(el('div', 'bar' + (c.score === max ? ' best' : ''),
+      '<span class="who">' + esc(CHART_NAME[c.key] || c.short) + '</span>' +
+      '<span class="track"><span class="fill" data-w="' +
+        (c.score / max * 100).toFixed(1) + '"></span></span>' +
+      '<span class="n">' + c.score + '</span>'));
+  });
+
+  let answered = false;
+  const verdict = guess.querySelector('.verdict');
+  const reveal = () => {
+    if (answered) return;
+    answered = true;
+    sec.querySelectorAll('.fill').forEach(f => { f.style.width = f.dataset.w + '%'; });
+    sec.appendChild(el('p', 'lede',
+      'My dad came last and we do not talk about it.'));
+  };
+  guess.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (answered) return;
+      const k = btn.dataset.key;
+      if (k !== '_skip'){
+        btn.classList.add('picked');
+        const picked = rows.find(c => c.key === k);
+        verdict.innerHTML = (k === winner.key)
+          ? 'Correct. <b>' + esc(CHART_NAME[winner.key]) + '</b> won it with ' + winner.score + '.'
+          : 'You said ' + esc(CHART_NAME[k]) + ', which got ' + picked.score +
+            '. It was actually <b>' + esc(CHART_NAME[winner.key]) + '</b>, with ' + winner.score + '.';
+        verdict.hidden = false;
+      }
+      reveal();
+    });
+  });
+  return sec;
+}
+
+/* ====================== idle ====================== */
+
+let idleTimer = null;
+let idle = false;
+
+function goIdle(){
+  if (idle) return;
+  idle = true;
+  closeStory();
+  document.body.classList.add('idle');
+}
+function wake(){
+  idle = false;
+  document.body.classList.remove('idle');
+  resetIdle();
+}
+function resetIdle(){
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(goIdle, cfg.idleMin * 60 * 1000);
+}
+
+/* The tap that wakes the wall must not also open whatever it landed on, or every
+   wake would fire a story at somebody who was only walking past. Capture phase,
+   so it is swallowed before it reaches the piece. */
+document.addEventListener('pointerdown', e => {
+  if (idle){
+    e.stopPropagation();
+    e.preventDefault();
+    wake();
+    return;
+  }
+  resetIdle();
+}, true);
+['pointermove','wheel','keydown','touchstart'].forEach(t =>
+  document.addEventListener(t, () => { if (!idle) resetIdle(); }, {passive:true}));
+
+/* ====================== settings, on a long press ====================== */
+
+let pressTimer = null;
+
+function armLongPress(e){
+  /* Only on bare wall or on the dim layer, so it can never be reached by mashing
+     a picture, and it stays out of the way of anybody just looking at the thing. */
+  const onWall = e.target.id === 'wall' || e.target.id === 'plane' || e.target.id === 'dim';
+  if (!onWall) return;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(openSettings, 1400);
+}
+function disarm(){ clearTimeout(pressTimer); }
+document.addEventListener('pointerdown', armLongPress);
+['pointerup','pointercancel','pointermove'].forEach(t =>
+  document.addEventListener(t, disarm));
+
+function openSettings(){
+  if (idle){ idle = false; document.body.classList.remove('idle'); }
+  $('#setColor').value = cfg.wall;
+  $('#setColorVal').textContent = cfg.wall.toUpperCase();
+  $('#setDim').value = cfg.dim;
+  $('#setDimVal').textContent = cfg.dim + '%';
+  $('#setIdle').value = cfg.idleMin;
+  $('#setIdleVal').textContent = cfg.idleMin + ' min';
+  markSwatch();
+  $('#settings').classList.add('on');
+  $('#scrim').classList.add('on');
+}
+function closeSettings(){
+  $('#settings').classList.remove('on');
+  $('#scrim').classList.remove('on');
+  document.body.classList.remove('idle');
+  saveCfg();
+  resetIdle();
+}
+
+const swBox = $('#swatches');
+SWATCHES.forEach(([hex, name]) => {
+  const b = el('button', 'sw');
+  b.style.background = hex;
+  b.dataset.hex = hex;
+  b.title = name;
+  b.addEventListener('click', () => {
+    cfg.wall = hex;
+    applyCfg();
+    $('#setColor').value = hex;
+    $('#setColorVal').textContent = hex.toUpperCase();
+    $('#swName').textContent = name;
+    markSwatch();
+  });
+  swBox.appendChild(b);
+});
+function markSwatch(){
+  let found = '';
+  swBox.querySelectorAll('.sw').forEach(b => {
+    const hit = b.dataset.hex.toLowerCase() === cfg.wall.toLowerCase();
+    b.classList.toggle('on', hit);
+    if (hit) found = b.title;
+  });
+  $('#swName').textContent = found;
+}
+
+$('#setColor').addEventListener('input', e => {
+  cfg.wall = e.target.value; applyCfg();
+  $('#setColorVal').textContent = cfg.wall.toUpperCase();
+  markSwatch();
+});
+$('#setDim').addEventListener('input', e => {
+  cfg.dim = +e.target.value; applyCfg();
+  $('#setDimVal').textContent = cfg.dim + '%';
+});
+$('#setIdle').addEventListener('input', e => {
+  cfg.idleMin = +e.target.value;
+  $('#setIdleVal').textContent = cfg.idleMin + ' min';
+});
+$('#setPreview').addEventListener('click', () => {
+  /* Show the idle state behind the panel so the dim level can be judged against
+     the actual wall next to the iPad, which is the only way to get it right. */
+  document.body.classList.toggle('idle');
+});
+$('#setReset').addEventListener('click', () => {
+  cfg = Object.assign({}, DEFAULTS); applyCfg(); openSettings();
+});
+$('#setDone').addEventListener('click', closeSettings);
+$('#scrim').addEventListener('click', closeSettings);
+
+/* ====================== go ====================== */
+
+loadCfg();
+resetIdle();
+</script>
+</body>
+</html>
