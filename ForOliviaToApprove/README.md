@@ -109,21 +109,15 @@ and you have a whole computer once it's on.
 The Dyson has no visual state in a photograph, so it's the one object where the caption
 is doing real work rather than confirming what you can already see.
 
-## 8. Type is sized for the room, not for your hand
+## 8. The picker's labels are sized against the TV, not the screen
 
-Everything is on one fluid scale set in a single line, landing around 27px for body copy
-on the iPad, roughly 1.7x a browser default. It is read from the bed and from standing in
-the doorway, not at arm's length.
+They live *inside the box that gets mapped onto the television*, so they stay a fixed
+fraction of it however large it lands in Saturday's photograph. Sized against the screen
+they would be right on this plate and wrong on the real one, purely by coincidence of how
+much of the frame the TV happens to fill, which would defeat the whole point of mapping
+it in the first place.
 
-The tradeoff is real: less of a story fits on screen, so the panels scroll further. That
-is the right way round. Something you cannot read from where you are standing is not on
-the screen at all.
-
-The picker's labels are sized *inside the box that gets mapped onto the TV*, not against
-the screen, so they stay a fixed fraction of the television however large it turns out to
-be in Saturday's photograph.
-
-Tell me if it wants to be bigger still. It is one number.
+The wall page's type is untouched and stays where it was.
 
 ## 9. Hold is 500ms
 
