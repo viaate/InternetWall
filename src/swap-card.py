@@ -14,9 +14,17 @@ sits at the same slight angle as its neighbours, and its exposure is matched to 
 replaced so it does not read as pasted on.
 
     python3 src/swap-card.py 2 path/to/new-card.jpg
+    python3 src/swap-card.py 2 --empty        leave the opening showing bare mat
+    python3 src/swap-card.py --restore        put the original photograph back
 
 Openings are numbered 1, 2, 3 from the left. Writes art/cards.jpg and keeps the previous
 version alongside as art/cards.before-swap.jpg the first time it is run.
+
+--empty exists for the state the wall is actually in: the middle card has moved to the
+slab and its replacement has not been identified, so the photograph shows a card that is
+now somewhere else. An empty opening is at least not a card that is demonstrably in two
+places at once. Use it only if the duplicate bothers you more than the gap does; a real
+card is better than either.
 """
 
 import pathlib
@@ -60,38 +68,65 @@ def openings(bgr):
     return out
 
 
+def mat_fill(frame, quad):
+    """The mat, reconstructed across the opening by inpainting.
+
+    The first version blurred the frame and blended that in, which smeared the card's own
+    colours across the hole and produced a rectangle of coloured mush rather than a mat.
+    Blurring an image to hide something in it does not work, because the something is
+    still in the image.
+
+    Inpainting grows the surrounding mat inward instead, so it never sees the card at all
+    and picks up the real gradient across the frame on its way.
+    """
+    centre = quad.mean(axis=0)
+    grown = (centre + (quad - centre) * 1.03).astype(np.int32)
+    hole = np.zeros(frame.shape[:2], np.uint8)
+    cv2.fillConvexPoly(hole, grown, 255)
+    return cv2.inpaint(frame, hole, 12, cv2.INPAINT_TELEA)
+
+
 def main():
+    if len(sys.argv) == 2 and sys.argv[1] == "--restore":
+        if not BACKUP.exists():
+            sys.exit("no art/cards.before-swap.jpg to restore from")
+        shutil.copy(BACKUP, CARDS)
+        print(f"  restored {CARDS.name} from {BACKUP.name}")
+        return
     if len(sys.argv) != 3:
         sys.exit(__doc__.strip())
     which = int(sys.argv[1])
-    card_path = pathlib.Path(sys.argv[2])
     if which not in (1, 2, 3):
         sys.exit("opening must be 1, 2 or 3")
-    if not card_path.exists():
-        sys.exit(f"no such file: {card_path}")
 
     frame = cv2.imread(str(CARDS))
     quad = openings(frame)[which - 1]
-    card = cv2.imread(str(card_path))
-    if card is None:
-        sys.exit(f"could not read {card_path}")
-
-    ch, cw = card.shape[:2]
-    src = np.array([[0, 0], [cw, 0], [cw, ch], [0, ch]], dtype="float32")
-    warped = cv2.warpPerspective(card, cv2.getPerspectiveTransform(src, quad),
-                                 (frame.shape[1], frame.shape[0]), flags=cv2.INTER_CUBIC)
-
     mask = np.zeros(frame.shape[:2], np.uint8)
     cv2.fillConvexPoly(mask, quad.astype(np.int32), 255)
 
-    # Match exposure to what was there. The frame photo is not evenly lit across its
-    # width, so a card pasted in at its own brightness reads as a sticker.
-    old_mean = cv2.mean(frame, mask=mask)[:3]
-    new_mean = cv2.mean(warped, mask=mask)[:3]
-    gain = np.array([o / n if n > 1 else 1.0 for o, n in zip(old_mean, new_mean)])
-    warped = np.clip(warped.astype(float) * gain, 0, 255).astype(np.uint8)
-    print(f"  exposure matched: {tuple(round(v) for v in new_mean)} "
-          f"-> {tuple(round(v) for v in old_mean)}")
+    if sys.argv[2] == "--empty":
+        warped = mat_fill(frame, quad)
+        print(f"  opening {which} emptied to bare mat")
+    else:
+        card_path = pathlib.Path(sys.argv[2])
+        if not card_path.exists():
+            sys.exit(f"no such file: {card_path}")
+        card = cv2.imread(str(card_path))
+        if card is None:
+            sys.exit(f"could not read {card_path}")
+        ch, cw = card.shape[:2]
+        src = np.array([[0, 0], [cw, 0], [cw, ch], [0, ch]], dtype="float32")
+        warped = cv2.warpPerspective(card, cv2.getPerspectiveTransform(src, quad),
+                                     (frame.shape[1], frame.shape[0]), flags=cv2.INTER_CUBIC)
+
+        # Match exposure to what was there. The frame photo is not evenly lit across its
+        # width, so a card pasted in at its own brightness reads as a sticker.
+        old_mean = cv2.mean(frame, mask=mask)[:3]
+        new_mean = cv2.mean(warped, mask=mask)[:3]
+        gain = np.array([o / n if n > 1 else 1.0 for o, n in zip(old_mean, new_mean)])
+        warped = np.clip(warped.astype(float) * gain, 0, 255).astype(np.uint8)
+        print(f"  exposure matched: {tuple(round(v) for v in new_mean)} "
+              f"-> {tuple(round(v) for v in old_mean)}")
 
     # Feather by a pixel or two so the join is not a hard cut against the mat bevel.
     soft = cv2.GaussianBlur(mask, (5, 5), 0).astype(float)[..., None] / 255.0
@@ -101,7 +136,7 @@ def main():
         shutil.copy(CARDS, BACKUP)
         print(f"  kept the original as {BACKUP.name}")
     cv2.imwrite(str(CARDS), out, [cv2.IMWRITE_JPEG_QUALITY, 92])
-    print(f"  wrote {CARDS.name}, opening {which} replaced with {card_path.name}")
+    print(f"  wrote {CARDS.name}")
 
 
 if __name__ == "__main__":

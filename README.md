@@ -185,11 +185,16 @@ Two things will want updating when the physical wall changes, and neither needs 
 frame photographed again:
 
 **The middle card.** `art/cards.jpg` shows The Wee Wee Bush in the middle slot. That card
-has gone into the slab, so it currently appears twice on the wall. Once you know what
-replaced it, one command fixes it:
+has gone into the slab, so it currently appears twice on the wall. The photograph is left
+as shot on purpose: it is a real photograph of a real frame, and the story panel says in
+so many words that the middle slot has changed since it was taken.
+
+Three one-command options, whenever you want one:
 
 ```
-python3 src/swap-card.py 2 path/to/the-new-card.jpg
+python3 src/swap-card.py 2 the-new-card.jpg   the real replacement, once you know it
+python3 src/swap-card.py 2 --empty            bare mat, if the duplicate bothers you more
+python3 src/swap-card.py --restore            back to the photograph as shot
 ```
 
 Openings are numbered 1, 2, 3 from the left. It keeps the real frame, the real mat and
