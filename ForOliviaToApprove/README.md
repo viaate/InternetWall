@@ -1,6 +1,6 @@
 # For approval
 
-The interaction design for the room page. Nine numbered items. Reply with the numbers
+The interaction design for the room page. Ten numbered items. Reply with the numbers
 and what you want changed; anything you don't mention I'll take as approved.
 
 **Open `demo.html` on the iPad and actually press things.** The screenshots are here so
@@ -109,13 +109,29 @@ and you have a whole computer once it's on.
 The Dyson has no visual state in a photograph, so it's the one object where the caption
 is doing real work rather than confirming what you can already see.
 
-## 8. Hold is 500ms
+## 8. Type is sized for the room, not for your hand
+
+Everything is on one fluid scale set in a single line, landing around 27px for body copy
+on the iPad, roughly 1.7x a browser default. It is read from the bed and from standing in
+the doorway, not at arm's length.
+
+The tradeoff is real: less of a story fits on screen, so the panels scroll further. That
+is the right way round. Something you cannot read from where you are standing is not on
+the screen at all.
+
+The picker's labels are sized *inside the box that gets mapped onto the TV*, not against
+the screen, so they stay a fixed fraction of the television however large it turns out to
+be in Saturday's photograph.
+
+Tell me if it wants to be bigger still. It is one number.
+
+## 9. Hold is 500ms
 
 Long enough not to fire on a slow tap, short enough not to feel like waiting. It's one
 constant and trivial to change, so if it feels wrong on the actual glass, say so and give
 me "longer" or "shorter" rather than a number.
 
-## 9. What I have not designed yet
+## 10. What I have not designed yet
 
 Deliberately, because they need decisions from you first:
 
