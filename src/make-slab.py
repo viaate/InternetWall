@@ -181,7 +181,20 @@ def build():
     lw = round((content_w - 2 * SIDE) * DPI)
     lh = round(label.height * lw / label.width)
     lx, ly = (slab_w - lw) // 2, round(TOP * DPI)
-    slab.paste(label.resize((lw, lh), Image.LANCZOS), (lx, ly))
+
+    # Take the digital edge off the label so it sits with the card instead of on top of it.
+    #
+    # The label is a vector render and the card is a photograph, and side by side that
+    # showed: high-frequency energy measured 25 on the label against 9 on the card, i.e.
+    # razor-sharp type against optically soft photography. A real slab photographed once
+    # would have both at the same acuity. A little blur and a little sensor grain is what
+    # closes that gap; the amounts are small because the label still has to be readable.
+    lab = label.resize((lw, lh), Image.LANCZOS).filter(ImageFilter.GaussianBlur(0.7))
+    arr = np.asarray(lab).astype(float)
+    rng = np.random.default_rng(4)
+    arr += rng.normal(0, 2.4, arr.shape)
+    lab = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+    slab.paste(lab, (lx, ly))
 
     cw, ch = round(CARD_W * DPI), round(CARD_H * DPI)
     cx, cy = (slab_w - cw) // 2, ly + lh + round(GAP * DPI)
