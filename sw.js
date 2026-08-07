@@ -22,7 +22,7 @@
 /* Bump this on every deploy. It is the only thing that evicts an old cache.
    BUILD is stamped by src/stamp-build.py so nobody has to remember. */
 const VERSION = 'wall-v2';
-const BUILD = '41aa773';
+const BUILD = '000dff7';
 const SHELL_CACHE = VERSION + '-shell';
 const MEDIA_CACHE = VERSION + '-media';
 

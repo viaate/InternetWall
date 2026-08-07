@@ -1429,19 +1429,37 @@ document.addEventListener('pointerdown', e => {
 /* ====================== settings, on a long press ====================== */
 
 let pressTimer = null;
+let pressFrom = null;
+
+/* A finger resting on glass is never still: iOS emits a stream of pointermove events with
+   a pixel or two of jitter the whole time it is down. Cancelling on any movement at all
+   therefore killed the timer within milliseconds and the long press could never complete.
+   It worked under a mouse, which emits nothing while held, which is exactly why this got
+   through: the input device used to test it was the one device the bug does not affect. */
+const PRESS_SLOP = 14;      // px of wander allowed before it counts as a drag
+const PRESS_MS = 1100;
 
 function armLongPress(e){
-  /* Only on bare wall or on the dim layer, so it can never be reached by mashing
-     a picture, and it stays out of the way of anybody just looking at the thing. */
-  const onWall = e.target.id === 'wall' || e.target.id === 'plane' || e.target.id === 'dim';
-  if (!onWall) return;
+  /* Only on bare wall, so it can never be reached by mashing a picture. #plane covers the
+     whole panel above #wall, so in practice that is the usual target; #stage and #scene
+     are here too because a tilt can put either of them under the finger. */
+  const bare = ['wall', 'plane', 'stage', 'scene', 'dim'].includes(e.target.id);
+  if (!bare) return;
+  pressFrom = {x: e.clientX, y: e.clientY};
   clearTimeout(pressTimer);
-  pressTimer = setTimeout(openSettings, 1400);
+  pressTimer = setTimeout(openSettings, PRESS_MS);
 }
-function disarm(){ clearTimeout(pressTimer); }
+
+function pressMove(e){
+  if (!pressFrom) return;
+  if (Math.hypot(e.clientX - pressFrom.x, e.clientY - pressFrom.y) > PRESS_SLOP) disarm();
+}
+
+function disarm(){ clearTimeout(pressTimer); pressFrom = null; }
+
 document.addEventListener('pointerdown', armLongPress);
-['pointerup','pointercancel','pointermove'].forEach(t =>
-  document.addEventListener(t, disarm));
+document.addEventListener('pointermove', pressMove, {passive: true});
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, disarm));
 
 function openSettings(){
   if (idle){ idle = false; document.body.classList.remove('idle'); }
