@@ -33,6 +33,7 @@ const SHELL = [
   './art/books/05-end-of-all-things.jpg',
   './art/books/06-activity-book.jpg',
   './art/slab.png',
+  './art/icon.png',
   './art/cards.jpg',
   './art/carter.jpg',
   './art/jen.jpg',

@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Wall">
+<link rel="apple-touch-icon" href="art/icon.png">
+<link rel="icon" href="art/icon.png">
 <meta name="robots" content="noindex">
 <title>The Wall</title>
 
@@ -283,6 +285,14 @@ body.story-open #story{transform:none; visibility:visible}
   gap:1.8rem; align-items:start;
 }
 .hero{border:3px solid #000; background:#000; overflow:hidden}
+/* The books get their covers laid out instead of one photograph, aligned along the
+   bottom so the shorter activity book sits on the same line as the rest. */
+.heroRow{display:flex; align-items:flex-end; gap:.7rem}
+.heroRow img{
+  flex:1 1 0; min-width:0; height:auto; align-self:flex-end;
+  border:3px solid #000;
+  box-shadow:4px 4px 0 rgba(0,0,0,.14);
+}
 .hero img{width:100%; height:auto}
 .prose{max-width:38rem}
 .prose p{margin:0 0 .95rem}
@@ -614,6 +624,13 @@ const PIECES = [
     goods:['art/books/02-enter-the-mine.jpg',
            {src:'art/books/06-activity-book.jpg', scale:7.4/8.7},
            'art/books/05-end-of-all-things.jpg'],
+    /* The shelf holds three. The story is about all six, so the panel shows the set. */
+    heroGoods:['art/books/01-hole-new-world.jpg',
+               'art/books/02-enter-the-mine.jpg',
+               'art/books/03-zombies-day-off.jpg',
+               'art/books/04-into-the-overworld.jpg',
+               'art/books/05-end-of-all-things.jpg',
+               {src:'art/books/06-activity-book.jpg', scale:7.4/8.7}],
     stamp:'signed first editions',
     title:'Six PopularMMOs books',
     facts:'all signed, all off eBay',
@@ -957,13 +974,32 @@ function openStory(key){
     body.appendChild(buildSaga(p));
   } else {
     body.classList.add('two');
-    const hero = el('div', 'hero');
-    const img = el('img');
-    img.src = p.art;
-    img.alt = p.title;
-    img.addEventListener('error', () => hero.replaceWith(todoNode(p.ratio || 1.4, p.title)));
-    hero.appendChild(img);
-    body.appendChild(hero);
+    /* A ledge has no single picture of its own: its artwork is the row of things standing
+       on it. Reading p.art here left src as undefined, which fetched "/undefined", failed,
+       and put a "photo not added yet" box on a story whose covers were all present. */
+    const heroList = p.heroGoods || p.goods;
+    if (heroList && heroList.length){
+      const row = el('div', 'heroRow');
+      heroList.forEach(item => {
+        const src = typeof item === 'string' ? item : item.src;
+        const scale = typeof item === 'string' ? 1 : (item.scale || 1);
+        const i = el('img');
+        i.src = src;
+        i.alt = '';
+        if (scale !== 1) i.style.width = (scale * 100) + '%';
+        i.addEventListener('error', () => i.remove());
+        row.appendChild(i);
+      });
+      body.appendChild(row);
+    } else {
+      const hero = el('div', 'hero');
+      const img = el('img');
+      img.src = p.art;
+      img.alt = p.title;
+      img.addEventListener('error', () => hero.replaceWith(todoNode(p.ratio || 1.4, p.title)));
+      hero.appendChild(img);
+      body.appendChild(hero);
+    }
 
     const prose = el('div', 'prose');
     (p.body || []).forEach(t => prose.appendChild(el('p', null, t)));
