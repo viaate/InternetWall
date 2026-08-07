@@ -100,27 +100,53 @@ Sherwin-Williams greens-greys loaded as swatches and whatever you pick there win
 
 ---
 
-## Artwork still needed
+## Artwork
 
-Three photographs are irreplaceable and already in: `carter.jpg`, `jen.jpg`,
-`shrek.jpg`.
+Everything on the wall is a photograph or a publisher's cover scan. `src/build-assets.py`
+crops, resizes and writes them into `art/`:
 
-Four artifacts are still placeholders. **This machine has no outbound network** — the
-egress proxy refuses every host, including `example.com` — so nothing can be downloaded
-here, and a straight-on photo of the real object beats a scrape anyway.
+```
+python3 src/build-assets.py
+```
 
-| File | What to shoot |
-|---|---|
-| `art/luton.jpg` | the framed tarp, square on |
-| `art/cards.jpg` | the three-card frame, square on |
-| `art/books-left.jpg` | the left ledge, loaded, from the front |
-| `art/books-right.jpg` | the right ledge with the slab in front of the books |
+It trims the two photographed frames off the dark surface they were shot on by finding
+the bright region, so `cards.jpg` and `luton.jpg` need no manual cropping — drop a new
+photo in `src/`, point the script at it, run it.
 
-Shoot square-on, not at an angle, in daylight or under a white bulb, filling the frame,
-long edge 1600px or more. Drop each in at that path — no code change, no rebuild.
+Those two are used **whole**, not dropped inside a drawn frame: a CSS moulding around a
+photographed moulding reads as two frames. Everything else sits in a frame drawn in CSS,
+which stays sharp at any size and matches the real frames rather than stock.
 
-Until then each shows a plainly provisional placeholder. That is deliberate: a bad fake
-is worse than an honest gap, and nothing on this wall pretends to be something it is not.
+**Still missing: `art/books/06-activity-book.jpg`** — the *A Hole New Activity Book*
+cover, which goes in the middle of the left shelf. A cover that is not there simply is
+not on the shelf; a dashed box standing among real books looks far worse than a slightly
+emptier shelf.
+
+**Also missing: `art/slab.jpg`** — the slab itself, standing in front of the books on the
+right. That one *does* get a visible placeholder, because it is the point of that shelf
+and should not be quietly forgotten.
+
+Note this machine has no outbound network — the egress proxy refuses every host,
+including `example.com` — so nothing can be fetched here. A square-on photo of the real
+object beats a scrape anyway.
+
+---
+
+## QR codes
+
+The iPad cannot follow a link, and nobody is going to retype a timestamped YouTube URL
+off a wall. Every outbound reference is a QR code instead, generated into `art/qr/` by
+the same script from the `LINKS` table in it — so a code can never drift out of step
+with the caption printed beside it.
+
+Two details that matter:
+
+- Share URLs carry a tracking parameter (`?si=` / `?is=`) identifying the account the
+  link was copied from. Those are stripped, and `STRIP_PARAMS` fails the build if one
+  creeps back in.
+- They use the `youtu.be` short form. Fewer characters means a lower QR version, which
+  means chunkier modules, which is what actually decides whether a phone reads a 3cm
+  code off a screen at arm's length. All fifteen come out at version 3.
 
 ---
 

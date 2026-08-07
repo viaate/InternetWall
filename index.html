@@ -108,7 +108,8 @@ button{font:inherit;color:inherit;margin:0}
    the shelf line stays exactly where it was drilled no matter how tall whatever is
    standing on it turns out to be. Swapping a placeholder for a real photo of the
    loaded shelf then cannot move the shelf. */
-.piece.frame{top:var(--y)}
+.piece.frame,
+.piece.photo{top:var(--y)}
 .piece.ledge{bottom:var(--b)}
 .piece:active{transform:scale(.985)}
 
@@ -153,6 +154,16 @@ button{font:inherit;color:inherit;margin:0}
    when this was called .box the card frame inherited a 3px black border and a
    pink drop shadow from it. */
 .piece.deep .mat{background:linear-gradient(160deg,#fcfcf9,#f2f0e8)}
+/* Some pieces are photographs of the real frame, so they are shown whole and get only
+   the wall shadow. Drawing a moulding around a photographed moulding reads as two
+   frames, which is worse than either on its own. */
+.piece.photo img{
+  width:100%; height:auto; border-radius:1.5px;
+  box-shadow:
+    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
+    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
+}
+
 .piece.deep .opening{box-shadow:
   0 0 0 1px rgba(140,134,118,.55),
   inset 0 .3vw .55vw rgba(0,0,0,.5),
@@ -162,13 +173,38 @@ button{font:inherit;color:inherit;margin:0}
 .ledge{--shelfh:1.5vw}
 .ledge .goods{
   display:flex; align-items:flex-end; justify-content:center;
-  gap:.5vw; padding:0 .9vw;
-  min-height:7vw;
+  gap:.45vw; padding:0 .8vw;
+  min-height:6vw;
 }
+/* Never let the row grow wider than the shelf it is standing on. */
+.ledge .goods img{min-width:0}
 .ledge .goods img{
   height:var(--goods-h, 11vw); width:auto; max-width:none;
-  box-shadow:0 var(--lift) calc(var(--lift)*1.4) rgba(42,48,42,.3);
+  align-self:flex-end;
+  /* Standing on a shelf, lit from above: a tight contact shadow where the book meets
+     the ledge, and a longer one falling back onto the wall behind. */
+  box-shadow:
+    0 .12vw .2vw rgba(30,36,30,.4),
+    .12vw .5vw .9vw rgba(30,36,30,.3);
 }
+.ledge .goods{position:relative}
+.ledge .goods img.front{
+  position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+  height:calc(var(--goods-h, 11vw) * .66); z-index:2;
+  box-shadow:0 .1vw .18vw rgba(30,36,30,.45), .1vw .4vw .8vw rgba(30,36,30,.34);
+}
+.ledge .goods .frontTodo{
+  position:absolute; left:50%; bottom:0; transform:translateX(-50%); z-index:2;
+  height:calc(var(--goods-h, 11vw) * .66); aspect-ratio:.62;
+  border:.2vw dashed rgba(60,66,58,.62); background:rgba(250,250,247,.94);
+  display:flex; align-items:center; justify-content:center;
+  font:700 clamp(8px,.72vw,12px)/1 Helvetica,Arial,sans-serif;
+  color:rgba(38,44,38,.66); letter-spacing:.04em; text-transform:uppercase;
+}
+.ledge .shelf img{width:100%; height:100%; object-fit:fill; border-radius:0}
+.ledge .shelf.hasphoto{background:none; box-shadow:
+  0 var(--lift) calc(var(--lift)*1.6) rgba(42,48,42,.24),
+  0 var(--cast) calc(var(--cast)*1.9) rgba(42,48,42,.24)}
 .ledge .shelf{
   height:var(--shelfh);
   border-radius:0 0 2px 2px;
@@ -278,6 +314,22 @@ body.story-open #story{transform:none; visibility:visible}
   font:400 .82rem/1.4 ui-monospace,Menlo,Consolas,monospace;
   background:#f2f2ee; padding:.1em .3em; word-break:break-all;
 }
+
+/* A QR beats a printed URL here. The iPad cannot follow a link and nobody is going to
+   retype a timestamped YouTube URL off a wall, but everyone already has the thing that
+   reads these in their pocket. */
+.qr{display:flex; gap:.85rem; align-items:flex-start; margin-bottom:1rem}
+.qr img{
+  width:6.4rem; height:6.4rem; flex:0 0 auto;
+  border:2px solid #000; background:#fff; padding:.15rem;
+}
+.qr .lab{min-width:0; padding-top:.1rem}
+.qr .lab b{display:block; font-size:.9rem; line-height:1.25}
+.qr .lab span{
+  display:block; margin-top:.25rem; color:#666;
+  font:400 .78rem/1.35 ui-monospace,Menlo,Consolas,monospace; word-break:break-all;
+}
+.qr .lab em{display:block; margin-top:.2rem; font-size:.78rem; color:#888; font-style:normal}
 
 /* ============================ the saga ============================ */
 
@@ -497,22 +549,28 @@ const PIECES = [
       'decided not to take that personally.'
     ],
     refs:[
-      {b:'CarterPCs — “Great meeting you…”', t:'youtube.com/shorts/CsOaHKlU3rU'},
-      {b:'CarterPCs — “Why I dont give fans free PCs”', t:'youtube.com/shorts/7sIHuqe6-gY'}
+      {qr:'carter-meeting', b:'CarterPCs — “Great meeting you…”',
+       u:'youtu.be/CsOaHKlU3rU'},
+      {qr:'carter-freepcs', b:'CarterPCs — “Why I dont give fans free PCs”',
+       u:'youtu.be/7sIHuqe6-gY'}
     ]
   },
   {
-    key:'cards', type:'frame', deep:true,
+    key:'cards', type:'photo',
     x:'32%', y:'20.5%', w:'19%',
-    art:'art/cards.jpg', ratio:2.05, mould:'4.6%', mat:'6%',
+    art:'art/cards.jpg', ratio:1.77,
     stamp:'the jack pack',
-    title:'Three cards out of a Jack Pack',
-    facts:'the middle one is signed',
+    title:'Three cards, all three signed',
+    facts:'JACK MASSEY WELSH &nbsp;·&nbsp; THE WEE WEE BUSH &nbsp;·&nbsp; TRAFFIC CONE BECKY',
     body:[
-      'The <b>Jack Pack</b> is the bundle of merch JackSucksAtLife posts out to people. These are '+
-      'three of the cards from it.',
-      'The one in the middle he signed by hand. The frame is a three-opening trading card frame, '+
-      'which exists because enough people needed exactly this.'
+      'The <b>Jack Pack</b> is the bundle of merch JackSucksAtLife posts out. These are three '+
+      'cards from it, and he has put a pen on all three.',
+      'Left is <b>Jack Massey Welsh</b> — 200K Milestone, Feb 2020 — signed <q>Jack sucks</q>. '+
+      'Right is <b>Traffic Cone Becky</b>, signed <q>Becky</q> with a smiley face.',
+      'The middle one is the one that matters. <b>The Wee Wee Bush</b>, initialled JMW, and then '+
+      'written across the whole bottom of the card in his handwriting: '+
+      '<span class="mark">“Jack my grandma wants to tell you something.”</span>',
+      'That is the title of the first post. He wrote the name of the thing onto the thing.'
     ]
   },
   {
@@ -521,17 +579,16 @@ const PIECES = [
     art:'art/shrek.jpg', ratio:0.8, mould:'5.4%', mat:'6.5%',
     stamp:'the photo booth',
     title:'Shrek’s Adventure, London',
-    facts:'the same booth',
+    facts:'8:06 into the London video',
     body:[
       'A photo booth at Shrek’s Adventure on the South Bank.',
       'It is the same booth JackSucksAtLife stood in during <q>I Tried To Visit EVERY London '+
-      'Landmark in 24 Hours…</q>, where he was visibly, memorably uncomfortable about the whole '+
-      'situation.',
+      'Landmark in 24 Hours…</q>, eight minutes and six seconds in, where he was visibly, '+
+      'memorably uncomfortable about the whole situation.',
       'So I went and stood in it too. <span class="mark">Same booth. Same discomfort. On purpose.</span>'
     ],
     refs:[
-      {b:'JackSucksAtLife — “I Tried To Visit EVERY London Landmark in 24 Hours…”',
-       t:'youtube.com/watch?v=RIsr05EOaQs'}
+      {qr:'shrek-awkward', b:'The awkward bit, from 8:06', u:'youtu.be/RIsr05EOaQs?t=486'}
     ]
   },
   {
@@ -551,7 +608,10 @@ const PIECES = [
   {
     key:'booksL', type:'ledge',
     x:'2.5%', b:'14.3%', w:'28%',
-    art:'art/books-left.jpg', goodsH:'12vw',
+    goodsH:'10.4vw',
+    goods:['art/books/02-enter-the-mine.jpg',
+           'art/books/06-activity-book.jpg',
+           'art/books/05-end-of-all-things.jpg'],
     stamp:'signed first editions',
     title:'Six PopularMMOs books',
     facts:'all signed, all off eBay',
@@ -565,9 +625,9 @@ const PIECES = [
     ]
   },
   {
-    key:'luton', type:'frame',
+    key:'luton', type:'photo',
     x:'35%', y:'53.3%', w:'30%',
-    art:'art/luton.jpg', ratio:1.42, mould:'4.4%', mat:'4%',
+    art:'art/luton.jpg', ratio:1.39,
     stamp:'a piece of the tarp',
     title:'Welcome to Luton',
     facts:'May 2022 &nbsp;·&nbsp; Max Fosh',
@@ -587,7 +647,11 @@ const PIECES = [
   {
     key:'booksR', type:'ledge', slab:true,
     x:'69.5%', b:'14.3%', w:'28%',
-    art:'art/books-right.jpg', goodsH:'12vw',
+    goodsH:'10.4vw',
+    goods:['art/books/01-hole-new-world.jpg',
+           'art/books/04-into-the-overworld.jpg',
+           'art/books/03-zombies-day-off.jpg'],
+    front:'art/slab.jpg',
     stamp:'the slab',
     title:'The thing in front of the books',
     facts:'homemade &nbsp;·&nbsp; grade invented &nbsp;·&nbsp; signature real',
@@ -787,18 +851,53 @@ function buildPiece(p){
     mat.appendChild(artNode(p.art, p.ratio, p.title));
     mould.appendChild(mat);
     node.appendChild(mould);
-  } else {
-    if (p.goodsH) node.style.setProperty('--goods-h', p.goodsH);
-    const goods = el('div', 'goods');
+
+  } else if (p.type === 'photo'){
+    /* Already a photograph of the real frame. It needs the wall shadow and nothing else. */
     const img = el('img');
     img.src = p.art;
     img.alt = p.title;
-    img.addEventListener('error', () => {
-      goods.replaceChildren(todoNode(3.2, p.title));
+    img.decoding = 'async';
+    img.addEventListener('error', () => img.replaceWith(todoNode(p.ratio || 1.4, p.title)));
+    node.appendChild(img);
+
+  } else {
+    if (p.goodsH) node.style.setProperty('--goods-h', p.goodsH);
+    const goods = el('div', 'goods');
+
+    (p.goods || []).forEach(src => {
+      const img = el('img');
+      img.src = src;
+      img.alt = '';
+      img.decoding = 'async';
+      /* A cover that has not been scanned yet just is not on the shelf. A dashed box
+         standing among real books looks far worse than a slightly emptier shelf. */
+      img.addEventListener('error', () => img.remove());
+      goods.appendChild(img);
     });
-    goods.appendChild(img);
+
+    if (p.front){
+      const f = el('img', 'front');
+      f.src = p.front;
+      f.alt = '';
+      /* This one does get a marker when it is missing — it is the slab, it is the whole
+         point of that shelf, and it should not be quietly forgotten. */
+      f.addEventListener('error', () => f.replaceWith(el('div', 'frontTodo', 'slab')));
+      goods.appendChild(f);
+    }
+
     node.appendChild(goods);
-    node.appendChild(el('div', 'shelf'));
+
+    const shelf = el('div', 'shelf');
+    if (p.shelf){
+      const si = el('img');
+      si.src = p.shelf;
+      si.alt = '';
+      si.addEventListener('error', () => shelf.classList.remove('hasphoto'));
+      shelf.classList.add('hasphoto');
+      shelf.appendChild(si);
+    }
+    node.appendChild(shelf);
   }
 
   node.addEventListener('click', () => openStory(p.key));
@@ -859,10 +958,10 @@ function openStory(key){
     (p.body || []).forEach(t => prose.appendChild(el('p', null, t)));
     if (p.refs && p.refs.length){
       const r = el('div', 'ref');
-      r.appendChild(el('div', null, '<b>If you want to go and watch these</b>' +
-        '<span style="color:#666"> — type them in, this iPad deliberately cannot leave this app.</span>'));
-      p.refs.forEach(x => r.appendChild(
-        el('div', null, '<b>' + esc(x.b) + '</b><code>' + esc(x.t) + '</code>')));
+      r.appendChild(el('div', null,
+        '<b>Point your phone at these</b>' +
+        '<span style="color:#666"> — this iPad deliberately cannot leave the app.</span>'));
+      p.refs.forEach(x => r.appendChild(qrBlock(x.qr, x.b, x.u)));
       prose.appendChild(r);
     }
     body.appendChild(prose);
@@ -970,11 +1069,30 @@ function chapter(ch, n, total, isExtra){
   }
   if (ch.jack && ch.jack.v){
     const label = ch.jackLabel || ('Jack’s reaction, from ' + mmss(ch.jack.t || 0));
-    sec.appendChild(el('div', 'ref',
-      '<div><b>' + esc(label) + '</b><code>youtube.com/watch?v=' + esc(ch.jack.v) +
-      '&t=' + (ch.jack.t || 0) + 's</code></div>'));
+    const r = el('div', 'ref');
+    r.appendChild(qrBlock('jack-' + ch.key, label,
+      'youtu.be/' + ch.jack.v + (ch.jack.t ? '?t=' + ch.jack.t : '')));
+    sec.appendChild(r);
   }
   return sec;
+}
+
+/* The QR files are generated by src/build-assets.py from the same list of links, so a
+   code can never drift out of step with the caption printed beside it. */
+function qrBlock(key, label, shown){
+  const wrap = el('div', 'qr');
+  const img = el('img');
+  img.src = 'art/qr/' + key + '.svg';
+  img.alt = 'QR code for ' + label;
+  img.addEventListener('error', () => img.remove());
+  const lab = el('div', 'lab',
+    '<b>' + esc(label) + '</b>' +
+    (shown ? '<span>' + esc(shown) + '</span>' : '') +
+    /* Only the codes that actually carry a ?t= land you at a moment. Saying it on the
+       ones that open at 0:00 is just a small lie repeated fourteen times. */
+    (shown && shown.indexOf('?t=') > -1 ? '<em>opens at the right moment</em>' : ''));
+  wrap.append(img, lab);
+  return wrap;
 }
 
 function missing(what){
