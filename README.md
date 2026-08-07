@@ -257,6 +257,11 @@ Two details that matter:
 | `python3 src/verify.py [outdir]` | drives settings, idle, the saga, the no-navigation and no-fetch rules |
 | `python3 src/shoot.py page index.html out.png` | screenshot at iPad Air 4 landscape |
 | `python3 src/make-wall-texture.py` | rebuild the drywall tile |
+| `python3 src/make-layers.py shoot/ room/` | turn the six-frame shoot into light layers |
+| `open src/calibrate.html` | tap the corners of each object in the plate |
+| `python3 src/make-layers.test.py` | 16 checks on alignment, differencing and additivity |
+| `python3 src/calibrate.test.py` | drives the calibration page in a real browser |
+| `node src/homography.test.js` | 9 checks on the rectangle-onto-quad solver |
 
 Two things the local browser cannot check, both of which need the actual iPad:
 
@@ -267,6 +272,67 @@ Two things the local browser cannot check, both of which need the actual iPad:
   of bug the development iPad hides.
 
 ---
+
+## The room page
+
+Page two is not a dashboard. Five attempts at one all came out looking the same, because
+a grid of device tiles is a grid of device tiles whatever you paint on it. It is the room
+instead, and specifically it is a **photograph** of the room, with the state shown by
+relighting the photograph rather than by labelling it.
+
+Turning the ceiling light on does not simulate light. It shows a second photograph of the
+same room with the light actually on. That cannot look drawn, because it is not drawn.
+
+### The six frames
+
+One locked camera position, exposure locked, six frames: everything off, ceiling warm,
+ceiling cool, strip white, TV on, and strip-plus-TV together as a check. `docs/SETUP.md`
+has the shooting instructions.
+
+The camera must not move and the exposure must not float. Every layer is registered to the
+first frame, so a shifted camera or a re-metered exposure moves the whole room instead of
+just the light. `make-layers.py` corrects small shifts, and the correction is coarse-to-
+fine because a quarter-scale search can only express multiples of four pixels and would
+"fix" a three pixel nudge by four, ending up worse than doing nothing.
+
+### Why six frames covers every state
+
+Light adds. Subtracting the base frame from each state frame leaves that one source's
+contribution to every pixel, so any combination composites by adding the layers you want.
+Light warm plus strip cyan plus TV on is a state nobody photographed and it composites
+exactly.
+
+Added, not screened. A difference is linear and screen is not, so differencing one way and
+compositing the other does not round-trip. Both ends are addition, matching the
+`plus-lighter` the CSS uses. `--check` measures this against the sixth frame, which is the
+only test that says whether light adds *in this room on this camera* rather than in
+principle.
+
+The strip is photographed white and tinted at runtime. It can be any colour and nobody is
+photographing all of them, but the shape of the light, which surfaces catch it and how it
+falls off, is the same whatever the colour.
+
+### Putting controls on the real objects
+
+`src/homography.js` maps a rectangle onto four points, so the source picker lies in the
+plane of the actual television at the angle the camera caught it. Rotate and skew cannot
+do that: a rectangle photographed off-axis has non-parallel opposite edges, which is a
+projective transform, and `matrix3d` is the only CSS that carries one.
+
+Corners come from `src/calibrate.html`: open it, drop in the base frame, tap four corners
+per object clockwise from the top left, copy the JSON. Winding is checked, because
+anticlockwise corners still solve and render a mirror image with backwards text and no
+error anywhere.
+
+### The interaction
+
+Tap advances to the next state, hold does the object's one secondary thing. That works
+only because the room is a photograph and already shows you where you are, so a tap only
+has to move one step. The single piece of UI lives exactly as long as a finger is down.
+`ForOliviaToApprove/` has the whole thing written up with a demo.
+
+Until the plates exist the page falls back to a drawn scene built from the floor plan, and
+a missing photograph falls back to its drawing rather than leaving a hole.
 
 ## Where the saga came from
 

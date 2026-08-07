@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calibrate the room plate</title>
+<!--
+  Point this at the base frame, tap the four corners of each object, copy the JSON out.
+
+  It exists because the alternative is me reading coordinates off a photograph by eye,
+  which is what the current numbers are and which is both slow and wrong. Tapping four
+  corners takes about ten seconds per object and is accurate to the pixel you tapped.
+
+  Corners go CLOCKWISE FROM THE TOP LEFT as the object appears in the photo. Wound the
+  other way the homography renders a mirror image with backwards text and no error, so
+  the winding is checked here and refused rather than discovered later on the wall.
+
+  No build step, no network. Open the file.
+-->
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#15181a;color:#eef;
+          font:400 15px/1.5 Helvetica,Arial,sans-serif;overflow:hidden}
+#wrap{display:flex;height:100%}
+
+#side{
+  width:23rem;flex:0 0 auto;background:#1c2023;border-right:1px solid #2c3236;
+  padding:1rem 1.1rem;overflow-y:auto;
+}
+h1{font:700 1.1rem/1.2 Helvetica,Arial,sans-serif;margin:0 0 .2rem}
+.sub{color:#8b979d;font-size:.82rem;margin:0 0 1rem}
+
+#drop{
+  border:2px dashed #3b444a;border-radius:.5rem;padding:1rem;text-align:center;
+  color:#8b979d;font-size:.85rem;cursor:pointer;margin-bottom:1rem;
+}
+#drop.has{border-style:solid;border-color:#2e7d5b;color:#7fd3ab}
+
+.obj{
+  border:1px solid #2c3236;border-radius:.45rem;padding:.6rem .7rem;margin-bottom:.5rem;
+  cursor:pointer;display:flex;align-items:center;gap:.6rem;
+}
+.obj.cur{border-color:#4f9dff;background:#1f2a35}
+.obj.done{border-color:#2e7d5b}
+.obj .n{font-weight:700;flex:1}
+.obj .c{font-size:.76rem;color:#8b979d;font-variant-numeric:tabular-nums}
+.obj .sw{width:.7rem;height:.7rem;border-radius:50%;flex:0 0 auto}
+
+.btn{
+  display:block;width:100%;padding:.6rem;border:0;border-radius:.4rem;
+  background:#2b3238;color:#eef;font:700 .85rem Helvetica,Arial,sans-serif;
+  cursor:pointer;margin-top:.4rem;
+}
+.btn.go{background:#2563c9}
+.btn:disabled{opacity:.4;cursor:default}
+
+#out{
+  width:100%;height:13rem;margin-top:.8rem;background:#111417;color:#9fd8bb;
+  border:1px solid #2c3236;border-radius:.4rem;padding:.6rem;
+  font:400 11px/1.45 ui-monospace,Menlo,Consolas,monospace;resize:none;
+}
+
+#stageWrap{flex:1 1 auto;position:relative;overflow:hidden;background:#0d0f11}
+#stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#img{max-width:100%;max-height:100%;display:block;user-select:none;-webkit-user-drag:none}
+#ov{position:absolute;pointer-events:none}
+#hint{
+  position:absolute;left:50%;bottom:1rem;transform:translateX(-50%);
+  background:rgba(10,13,15,.9);padding:.5rem .9rem;border-radius:.4rem;
+  font-size:.84rem;color:#cfe0e6;pointer-events:none;white-space:nowrap;
+}
+#zoom{
+  position:absolute;width:9rem;height:9rem;border:2px solid #4f9dff;border-radius:50%;
+  overflow:hidden;pointer-events:none;display:none;background:#000;
+  box-shadow:0 .4rem 1.2rem rgba(0,0,0,.6);
+}
+#zoom canvas{display:block}
+#zoom::after{
+  content:"";position:absolute;inset:0;
+  background:
+    linear-gradient(to right, transparent calc(50% - 1px), #ff2e88 calc(50% - 1px),
+                    #ff2e88 calc(50% + 1px), transparent calc(50% + 1px)),
+    linear-gradient(to bottom, transparent calc(50% - 1px), #ff2e88 calc(50% - 1px),
+                    #ff2e88 calc(50% + 1px), transparent calc(50% + 1px));
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="side">
+    <h1>Calibrate the plate</h1>
+    <p class="sub">Tap four corners per object, <b>clockwise from the top left</b>.
+       Right-click or press Escape to undo a point.</p>
+
+    <div id="drop">Drop <b>base.jpg</b> here, or click to choose</div>
+
+    <div id="list"></div>
+
+    <button class="btn" id="clear">Clear this object</button>
+    <button class="btn go" id="copy" disabled>Copy JSON</button>
+    <textarea id="out" spellcheck="false" readonly></textarea>
+  </div>
+
+  <div id="stageWrap">
+    <div id="stage"><img id="img" alt=""></div>
+    <canvas id="ov"></canvas>
+    <div id="zoom"><canvas width="180" height="180"></canvas></div>
+    <div id="hint">Load the base frame to start</div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+
+/* The objects worth calibrating, and what each one is for. `quad` means it needs four
+   corners because something gets mapped onto it; `hit` means it only needs a region to
+   tap, so four corners is still the easiest way to describe it. */
+const OBJECTS = [
+  {key:'tv',     name:'TV screen',        colour:'#4f9dff', note:'the panel itself, not the bezel'},
+  {key:'light',  name:'Ceiling light',    colour:'#ffd166', note:'the ring, as it appears'},
+  {key:'strip',  name:'Bias light strip', colour:'#3fe0ff', note:'behind the TV'},
+  {key:'dyson',  name:'Dyson',            colour:'#c7d0d4', note:'loop and base together'},
+  {key:'console',name:'Console',          colour:'#b48ce8', note:'under the TV'},
+  {key:'sonos',  name:'Sonos',            colour:'#8de8b4', note:'skip if not in frame'},
+];
+
+const pts = {};              // key -> array of [x, y] in natural image pixels
+let cur = OBJECTS[0].key;
+let nat = null;              // {w, h}
+
+/* ---------- the same winding check the app uses ----------
+   Duplicated rather than imported because this file has to open with no server, and a
+   module import from file:// is blocked. Four lines is a cheaper price than a build step. */
+function quadOk(p){
+  let sign = 0;
+  for (let i = 0; i < 4; i++){
+    const [ax,ay] = p[i], [bx,by] = p[(i+1)%4], [cx,cy] = p[(i+2)%4];
+    const cross = (bx-ax)*(cy-by) - (by-ay)*(cx-bx);
+    if (Math.abs(cross) < 1e-9) return false;
+    const s = Math.sign(cross);
+    if (sign === 0) sign = s; else if (s !== sign) return false;
+  }
+  return sign > 0;
+}
+
+function drawList(){
+  const l = $('#list'); l.textContent = '';
+  OBJECTS.forEach(o => {
+    const n = pts[o.key] ? pts[o.key].length : 0;
+    const d = document.createElement('div');
+    d.className = 'obj' + (o.key === cur ? ' cur' : '') + (n === 4 ? ' done' : '');
+    d.innerHTML = '<span class="sw" style="background:' + o.colour + '"></span>'
+                + '<span class="n">' + o.name + '</span>'
+                + '<span class="c">' + n + '/4</span>';
+    d.title = o.note;
+    d.addEventListener('click', () => { cur = o.key; drawList(); paint(); });
+    l.appendChild(d);
+  });
+  emit();
+}
+
+function imgRect(){
+  const im = $('#img');
+  const r = im.getBoundingClientRect();
+  const s = $('#stageWrap').getBoundingClientRect();
+  return {x:r.left - s.left, y:r.top - s.top, w:r.width, h:r.height};
+}
+function toNat(cx, cy){
+  const r = imgRect();
+  return [ (cx - r.x) / r.w * nat.w, (cy - r.y) / r.h * nat.h ];
+}
+function toScreen(p){
+  const r = imgRect();
+  return [ r.x + p[0] / nat.w * r.w, r.y + p[1] / nat.h * r.h ];
+}
+
+function paint(){
+  const c = $('#ov'), s = $('#stageWrap').getBoundingClientRect();
+  c.width = s.width; c.height = s.height;
+  c.style.width = s.width + 'px'; c.style.height = s.height + 'px';
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height);
+  if (!nat) return;
+
+  OBJECTS.forEach(o => {
+    const p = pts[o.key]; if (!p || !p.length) return;
+    const sp = p.map(toScreen);
+    const active = o.key === cur;
+    g.lineWidth = active ? 2.5 : 1.5;
+    g.strokeStyle = o.colour;
+    g.globalAlpha = active ? 1 : .45;
+
+    g.beginPath();
+    sp.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]));
+    if (sp.length === 4){
+      g.closePath();
+      g.fillStyle = o.colour; g.globalAlpha = active ? .16 : .07;
+      g.fill();
+      g.globalAlpha = active ? 1 : .45;
+    }
+    g.stroke();
+
+    sp.forEach((q, i) => {
+      g.beginPath(); g.arc(q[0], q[1], active ? 5 : 3.5, 0, 7);
+      g.fillStyle = o.colour; g.fill();
+      if (active){
+        g.fillStyle = '#0d0f11'; g.font = '700 10px Helvetica,Arial';
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(String(i + 1), q[0], q[1] + .5);
+      }
+    });
+    g.globalAlpha = 1;
+  });
+
+  const o = OBJECTS.find(x => x.key === cur);
+  const n = pts[cur] ? pts[cur].length : 0;
+  const LABEL = ['top left', 'top right', 'bottom right', 'bottom left'];
+  if (n < 4){
+    $('#hint').innerHTML = '<b>' + o.name + '</b> &nbsp; tap the <b>' + LABEL[n] + '</b> corner';
+  } else if (!quadOk(pts[cur])){
+    $('#hint').innerHTML = '<b style="color:#ff8fb4">Those corners are wound the wrong way '
+                         + 'or cross over.</b> Clear and go clockwise from the top left.';
+  } else {
+    $('#hint').innerHTML = '<b>' + o.name + '</b> &nbsp; done. Pick the next object.';
+  }
+}
+
+function emit(){
+  const done = OBJECTS.filter(o => pts[o.key] && pts[o.key].length === 4 && quadOk(pts[o.key]));
+  const q = {};
+  done.forEach(o => {
+    /* Fractions of the image, not pixels. The plate gets resized for the iPad and the
+       numbers have to survive that; a pixel coordinate would silently mean something
+       different the moment the image is scaled. */
+    q[o.key] = pts[o.key].map(p => [ +(p[0] / nat.w).toFixed(4), +(p[1] / nat.h).toFixed(4) ]);
+  });
+  $('#out').value = done.length
+    ? 'const QUADS = ' + JSON.stringify(q, null, 2)
+        .replace(/\[\s+([\d.]+),\s+([\d.]+)\s+\]/g, '[$1,$2]') + ';'
+    : '';
+  $('#copy').disabled = !done.length;
+}
+
+/* ---------- the loupe ----------
+   A corner is a specific pixel and a finger is not. This shows the pixels under the
+   cursor magnified with a crosshair, which is the difference between calibration that is
+   accurate to the pixel and calibration that is accurate to wherever the finger landed. */
+function loupe(cx, cy){
+  const z = $('#zoom');
+  if (!nat){ z.style.display = 'none'; return; }
+  const g = z.querySelector('canvas').getContext('2d');
+  const [nx, ny] = toNat(cx, cy);
+  const SRC = 26, DST = 180;
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, DST, DST);
+  g.drawImage($('#img'), nx - SRC / 2, ny - SRC / 2, SRC, SRC, 0, 0, DST, DST);
+  const s = $('#stageWrap').getBoundingClientRect();
+  z.style.display = 'block';
+  z.style.left = Math.min(s.width - 150, Math.max(6, cx + 18)) + 'px';
+  z.style.top  = Math.min(s.height - 150, Math.max(6, cy - 160)) + 'px';
+}
+
+$('#stageWrap').addEventListener('mousemove', e => {
+  const s = $('#stageWrap').getBoundingClientRect();
+  loupe(e.clientX - s.left, e.clientY - s.top);
+});
+$('#stageWrap').addEventListener('mouseleave', () => { $('#zoom').style.display = 'none'; });
+
+$('#stageWrap').addEventListener('click', e => {
+  if (!nat) return;
+  const s = $('#stageWrap').getBoundingClientRect();
+  const cx = e.clientX - s.left, cy = e.clientY - s.top;
+  const r = imgRect();
+  if (cx < r.x || cy < r.y || cx > r.x + r.w || cy > r.y + r.h) return;
+  pts[cur] = pts[cur] || [];
+  if (pts[cur].length >= 4) pts[cur] = [];      // a fifth tap starts the object again
+  pts[cur].push(toNat(cx, cy));
+  drawList(); paint();
+});
+$('#stageWrap').addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (pts[cur] && pts[cur].length){ pts[cur].pop(); drawList(); paint(); }
+});
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && pts[cur] && pts[cur].length){ pts[cur].pop(); drawList(); paint(); }
+  if (e.key === 'Tab'){
+    e.preventDefault();
+    const i = OBJECTS.findIndex(o => o.key === cur);
+    cur = OBJECTS[(i + 1) % OBJECTS.length].key;
+    drawList(); paint();
+  }
+});
+
+$('#clear').addEventListener('click', () => { pts[cur] = []; drawList(); paint(); });
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#out').value); $('#copy').textContent = 'Copied'; }
+  catch (e) { $('#out').select(); }
+  setTimeout(() => { $('#copy').textContent = 'Copy JSON'; }, 1200);
+});
+
+function accept(file){
+  const url = URL.createObjectURL(file);
+  const im = $('#img');
+  im.onload = () => {
+    nat = {w: im.naturalWidth, h: im.naturalHeight};
+    $('#drop').classList.add('has');
+    $('#drop').innerHTML = file.name + ' &nbsp; <b>' + nat.w + '×' + nat.h + '</b>';
+    drawList(); paint();
+  };
+  im.src = url;
+}
+const drop = $('#drop');
+drop.addEventListener('click', () => {
+  const i = document.createElement('input');
+  i.type = 'file'; i.accept = 'image/*';
+  i.onchange = () => i.files[0] && accept(i.files[0]);
+  i.click();
+});
+['dragover','drop'].forEach(t => document.addEventListener(t, e => e.preventDefault()));
+document.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f) accept(f);
+});
+addEventListener('resize', paint);
+drawList();
+</script>
+</body>
+</html>
