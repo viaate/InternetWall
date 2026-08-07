@@ -455,6 +455,12 @@ body.idle #wall::after{opacity:.5}
     <label>Idle after — <span class="val" id="setIdleVal"></span></label>
     <input type="range" id="setIdle" min="1" max="60" step="1">
   </div>
+  <div class="row" id="offlineRow">
+    <label>Offline</label>
+    <p class="hint" id="offlineState" style="margin:0 0 .5rem">Checking…</p>
+    <button id="setCache" style="width:100%;padding:.7rem;border:3px solid #000;
+            background:#fff;font-weight:700;cursor:pointer">Save all 8 clips to this iPad</button>
+  </div>
   <div class="go">
     <button id="setReset">Reset</button>
     <button id="setPreview">Preview idle</button>
@@ -807,15 +813,20 @@ let currentVideo = null;
 
 function killVideo(){
   if (!currentVideo) return;
-  /* Pausing is not enough. Clearing src and calling load() releases the decoder,
-     which is what actually matters on the A14 after a few clips. */
-  try {
-    currentVideo.pause();
-    currentVideo.removeAttribute('src');
-    currentVideo.load();
-  } catch (e) {}
-  currentVideo.remove();
+  const v = currentVideo;
   currentVideo = null;
+  /* Flagged before teardown starts. Clearing src and calling load() makes the element
+     fire `error`, and without this the handler below would take our own teardown for a
+     broken file and stamp "this clip is not here" over a clip that is perfectly fine. */
+  v.dataset.tearing = '1';
+  /* Pausing alone is not enough. Clearing src and calling load() is what actually
+     releases the decoder, which is the thing that matters on the A14 after a few clips. */
+  try {
+    v.pause();
+    v.removeAttribute('src');
+    v.load();
+  } catch (e) {}
+  v.remove();
 }
 
 function openStory(key){
@@ -987,7 +998,10 @@ function videoPlate(ch){
     v.setAttribute('aria-label', ch.title);
     /* Not muted, and started from a tap, which is the gesture iOS wants before it
        will let audio out. So no unmute step is ever shown to anybody. */
-    v.addEventListener('error', () => holder.replaceWith(missing('this clip')));
+    v.addEventListener('error', () => {
+      if (v.dataset.tearing) return;      // we caused this, it is not a fault
+      holder.replaceWith(missing('this clip'));
+    });
     holder.appendChild(v);
     plate.replaceWith(holder);
     currentVideo = v;
@@ -1172,6 +1186,45 @@ $('#setReset').addEventListener('click', () => {
 });
 $('#setDone').addEventListener('click', closeSettings);
 $('#scrim').addEventListener('click', closeSettings);
+
+/* ====================== offline ====================== */
+
+/* iOS only runs a service worker over HTTPS or on localhost. Served off a PC on the LAN
+   over plain http it simply never registers, and everything else still works — so this
+   reports what is actually true rather than promising offline it cannot deliver. */
+let swReg = null;
+
+function offlineState(msg){ const n = $('#offlineState'); if (n) n.textContent = msg; }
+
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    swReg = reg;
+    offlineState('The wall and every photo are saved. Clips are saved as you play them.');
+  }).catch(() => {
+    offlineState('Could not register — needs https, or localhost.');
+    $('#setCache').disabled = true;
+  });
+  navigator.serviceWorker.addEventListener('message', e => {
+    const d = e.data || {};
+    if (d.type === 'cache-progress'){
+      offlineState('Saving clip ' + d.done + ' of ' + d.total + '…');
+    } else if (d.type === 'cache-done'){
+      offlineState('All ' + d.stored + ' clips saved. This works with the wifi off.');
+      $('#setCache').disabled = false;
+      $('#setCache').textContent = 'Saved — tap to check again';
+    }
+  });
+} else {
+  offlineState('This browser has no service worker, so nothing is saved for offline.');
+}
+
+$('#setCache').addEventListener('click', () => {
+  const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (!sw){ offlineState('Not ready yet — reload once, then try again.'); return; }
+  $('#setCache').disabled = true;
+  offlineState('Starting… this is about 86MB, give it a few minutes.');
+  sw.postMessage({type:'cache-clips'});
+});
 
 /* ====================== go ====================== */
 

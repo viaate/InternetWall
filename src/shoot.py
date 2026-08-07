@@ -37,7 +37,11 @@ def serve(directory):
     """A file:// origin blocks some things a real host does not, so serve properly."""
     handler = lambda *a, **kw: http.server.SimpleHTTPRequestHandler(
         *a, directory=str(directory), **kw)
-    httpd = socketserver.TCPServer(("127.0.0.1", 0), handler)
+    # Threading matters: a single-threaded server blocks on a video byte-range
+    # request and starves every other asset, which looks exactly like the app
+    # failing to load media.
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    httpd.daemon_threads = True
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     return httpd, httpd.server_address[1]
 

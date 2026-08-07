@@ -1,0 +1,164 @@
+/* Service worker: what actually makes "works with the wifi off" true on an iPad.
+
+   Without this the app is only offline in the sense that it makes no third-party
+   requests — it would still need whatever machine is serving it to be switched on,
+   which defeats the point of a thing bolted to a wall.
+
+   Two tiers, because the split matters:
+
+     SHELL is small (a few MB) and is fetched at install. After one visit the wall,
+     every story, and every photo work with no network at all.
+
+     The eight clips are ~86MB and are NOT precached. Downloading that on first paint
+     would stall the install and, if it failed, would fail the whole registration.
+     They are cached as they are played instead, and the settings panel has a button
+     that pulls the lot down deliberately with a progress readout.
+
+   iOS only runs service workers over HTTPS or on localhost. Served from a PC over
+   plain http on the LAN this never registers, and the app still works exactly as
+   before — just not offline. index.html handles that case rather than assuming.
+*/
+
+const VERSION = 'wall-v1';
+const SHELL_CACHE = VERSION + '-shell';
+const MEDIA_CACHE = VERSION + '-media';
+
+const SHELL = [
+  './',
+  './index.html',
+  './art/wall-texture.png',
+  './art/carter.jpg',
+  './art/jen.jpg',
+  './art/shrek.jpg',
+  './art/cards.jpg',
+  './art/luton.jpg',
+  './art/books-left.jpg',
+  './art/books-right.jpg',
+  './slab/photos/card-front.jpg',
+  './slab/photos/card-inscription.jpg',
+  './slab/photos/playbutton.jpg',
+  './slab/photos/slab-label.png',
+  './slab/photos/psa-1.jpg',
+  './slab/photos/psa-2.jpg',
+  './slab/photos/psa-3.jpg',
+  './slab/photos/psa-4.jpg',
+  './slab/photos/spoon-1.jpg',
+  './slab/photos/spoon-2.jpg',
+  './slab/photos/spoon-3.jpg',
+  './slab/photos/spoon-4.jpg'
+];
+
+const CLIPS = [
+  './slab/media/01-grandma.mp4',
+  './slab/media/02-dad.mp4',
+  './slab/media/03-mom.mp4',
+  './slab/media/04-sister.mp4',
+  './slab/media/05-dog.mp4',
+  './slab/media/06-uncle.mp4',
+  './slab/media/07-finale.mp4',
+  './slab/media/08-update.mp4'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(SHELL_CACHE);
+    /* Added one at a time rather than cache.addAll(). addAll is all-or-nothing, so a
+       single artifact that has not been photographed yet would 404 and throw away the
+       entire install — the app would silently never go offline because of one missing
+       jpg. Each miss is tolerated instead. */
+    await Promise.all(SHELL.map(url =>
+      cache.add(new Request(url, {cache: 'reload'})).catch(() => {})
+    ));
+    self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter(k => k !== SHELL_CACHE && k !== MEDIA_CACHE)
+      .map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+
+const isClip = url => /\/slab\/media\/.+\.mp4$/.test(url.pathname);
+
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (isClip(url)) {
+    /* Video is requested with a Range header. A cached 200 satisfies a range request
+       in WebKit, but only if the whole response is stored — so partial (206) responses
+       are deliberately never written to the cache, or seeking would break offline. */
+    event.respondWith((async () => {
+      const cache = await caches.open(MEDIA_CACHE);
+      const hit = await cache.match(url.pathname, {ignoreSearch: true});
+      if (hit) return hit;
+      try {
+        const fresh = await fetch(new Request(url.pathname, {cache: 'reload'}));
+        if (fresh.ok && fresh.status === 200) {
+          cache.put(url.pathname, fresh.clone());
+        }
+        return fresh;
+      } catch (e) {
+        return new Response('', {status: 504, statusText: 'offline, clip not saved yet'});
+      }
+    })());
+    return;
+  }
+
+  event.respondWith((async () => {
+    const hit = await caches.match(req, {ignoreSearch: true});
+    if (hit) return hit;
+    try {
+      const fresh = await fetch(req);
+      if (fresh.ok) {
+        const cache = await caches.open(SHELL_CACHE);
+        cache.put(req, fresh.clone());
+      }
+      return fresh;
+    } catch (e) {
+      /* A navigation that misses the cache should still land on the wall rather than
+         on Safari's error page, which inside Guided Access is a dead end. */
+      if (req.mode === 'navigate') {
+        const shell = await caches.match('./index.html');
+        if (shell) return shell;
+      }
+      throw e;
+    }
+  })());
+});
+
+/* Deliberate bulk download, driven from the settings panel. Reports progress back so
+   the panel can show which clip it is on rather than sitting there looking hung for
+   the couple of minutes 86MB takes. */
+self.addEventListener('message', event => {
+  if (!event.data || event.data.type !== 'cache-clips') return;
+
+  event.waitUntil((async () => {
+    const cache = await caches.open(MEDIA_CACHE);
+    const post = msg => self.clients.matchAll().then(cs => cs.forEach(c => c.postMessage(msg)));
+
+    let done = 0;
+    for (const url of CLIPS) {
+      const already = await cache.match(url, {ignoreSearch: true});
+      if (!already) {
+        try {
+          const res = await fetch(new Request(url, {cache: 'reload'}));
+          if (res.ok && res.status === 200) await cache.put(url, res.clone());
+        } catch (e) { /* report progress anyway; a retry can pick it up */ }
+      }
+      done++;
+      await post({type: 'cache-progress', done, total: CLIPS.length});
+    }
+
+    const stored = (await cache.keys()).length;
+    await post({type: 'cache-done', stored, total: CLIPS.length});
+  })());
+});
