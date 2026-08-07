@@ -14,8 +14,8 @@ branching anywhere.
 
 **Nothing navigates.** No `<a href>`, no `location` writes, no hash routing. Every view
 is a class on `<body>`. A navigation inside Guided Access is unrecoverable without
-unlocking the iPad, so references to outside things are *printed as text you type in*
-rather than linked.
+unlocking the iPad, so references to outside things are QR codes people scan with their
+own phone — never links this iPad could follow.
 
 **Nothing is fetched.** No CDN, no web font, no analytics, no YouTube embed. The whole
 app is `index.html` plus `art/` and `slab/`.
@@ -154,6 +154,7 @@ Two details that matter:
 
 | | |
 |---|---|
+| `python3 src/build-assets.py` | rebuild every image in `art/` and every QR code |
 | `python3 src/verify.py [outdir]` | drives settings, idle, the saga, the no-navigation and no-fetch rules |
 | `python3 src/shoot.py page index.html out.png` | screenshot at iPad Air 4 landscape |
 | `python3 src/make-wall-texture.py` | rebuild the drywall tile |
@@ -175,5 +176,5 @@ reused **verbatim** from `viaate/slab`. That copy was already written and alread
 The clips and photos are copied into `slab/`.
 
 Two changes for this context. The play-button chapter's YouTube facade is gone, because
-there is no network to load it from. And every "watch Jack react" link is printed as
-text instead of linked, because of the no-navigation rule.
+there is no network to load it from. And every "watch Jack react" link is a QR code
+instead, because of the no-navigation rule.
