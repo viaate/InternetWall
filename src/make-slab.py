@@ -190,6 +190,25 @@ def build():
 
     SLAB_W, SLAB_H = slab_w, slab_h
 
+    # The front sheet of acrylic, over everything that is sealed behind it.
+    #
+    # Without this the card was fully opaque, which read as a card lying on top of the slab
+    # rather than one sealed inside it. A real slab has 3mm of plastic between your eye and
+    # the card: it lifts the blacks slightly and takes a little saturation out, and that
+    # tiny veil is most of what says "behind glass".
+    veil = Image.new("RGBA", (slab_w, slab_h), (243, 247, 250, 16))
+    face = Image.new("L", (slab_w, slab_h), 0)
+    ImageDraw.Draw(face).rounded_rectangle([0, 0, slab_w, slab_h], radius=r, fill=255)
+    slab = Image.alpha_composite(slab, Image.composite(
+        veil, Image.new("RGBA", slab.size, (0, 0, 0, 0)), face))
+
+    # The card is recessed in the well, so the case wall throws a hairline shadow around
+    # it. Drawn as four thin edges rather than a blur, which would creep over the artwork.
+    sh = ImageDraw.Draw(slab, "RGBA")
+    for i, alpha in enumerate((34, 22, 12)):
+        sh.rectangle([cx - i - 1, cy - i - 1, cx + cw + i, cy + ch + i],
+                     outline=(70, 80, 90, alpha), width=1)
+
     # Glare. Two soft diagonal wedges on a separate layer so the blur does not smear the
     # card underneath. This is the only invented part of the image and it stays subtle.
     glare = Image.new("RGBA", (SLAB_W, SLAB_H), (0, 0, 0, 0))
