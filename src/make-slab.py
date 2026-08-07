@@ -239,6 +239,16 @@ def build():
     slab = Image.alpha_composite(slab, Image.composite(
         glare, Image.new("RGBA", slab.size, (0, 0, 0, 0)), shape))
 
+    # No sensor grain is added here, and that is a deliberate negative result.
+    #
+    # The drawn plastic measures 0.50 on a high-pass against 6 to 19 for the photographs
+    # around it, which looked like an obvious tell. It is not. Two reasons, both only
+    # visible once measured rather than reasoned about: the shell is 18% opaque, so what
+    # you actually see through it is the drywall texture behind it; and the slab renders
+    # about 50pt tall on the shelf, where the card's own detail dominates completely.
+    # Sweeping sigma from 0 to 6 moved the rendered result from 21.56 to 21.50, which is
+    # nothing. It was costing half the file size for no visible difference.
+
     out = ROOT / "art" / "slab.png"
     slab.save(out)
     print(f"  wrote {out.name} {slab.size} ({out.stat().st_size//1024} KB)")
