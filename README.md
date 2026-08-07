@@ -181,11 +181,25 @@ with Jack's orange initials on it, and `slab/photos/card-front.jpg`, the actual 
 the plastic is synthetic, and the plastic is the part no file could have supplied. Replace
 it with a straight-on photograph the moment there is a real one to photograph.
 
-Two things will want re-shooting when the physical wall changes:
+Two things will want updating when the physical wall changes, and neither needs the
+frame photographed again:
 
-- `art/cards.jpg` shows The Wee Wee Bush in the middle slot. That card has gone into the
-  slab, so the frame holds something else now. The story panel says so.
-- `art/slab.png`, once the real slab exists.
+**The middle card.** `art/cards.jpg` shows The Wee Wee Bush in the middle slot. That card
+has gone into the slab, so it currently appears twice on the wall. Once you know what
+replaced it, one command fixes it:
+
+```
+python3 src/swap-card.py 2 path/to/the-new-card.jpg
+```
+
+Openings are numbered 1, 2, 3 from the left. It keeps the real frame, the real mat and
+the real lighting, fits the new card to that opening's own corners so it sits at the same
+slight angle as its neighbours, and matches its exposure to what it replaced. Round-tripped
+against the existing card it comes back within JPEG re-encode noise. The original is kept
+as `art/cards.before-swap.jpg`.
+
+**The slab.** `art/slab.png` once the real one exists, at which point it is a photograph
+and `src/make-slab.py` is no longer needed.
 
 Note this machine has no outbound network. The egress proxy refuses every host,
 including `example.com`, so nothing can be fetched here. A square-on photo of the real
@@ -218,6 +232,7 @@ Two details that matter:
 | `python3 serve.py` | serve it to the iPad over wifi |
 | `python3 src/build-assets.py` | rebuild every image in `art/` and every QR code |
 | `python3 src/make-slab.py` | rebuild the slab composite |
+| `python3 src/swap-card.py N card.jpg` | put a different card in opening N of the card frame |
 | `python3 src/verify.py [outdir]` | drives settings, idle, the saga, the no-navigation and no-fetch rules |
 | `python3 src/shoot.py page index.html out.png` | screenshot at iPad Air 4 landscape |
 | `python3 src/make-wall-texture.py` | rebuild the drywall tile |
