@@ -171,14 +171,21 @@ Those two are used **whole**, not dropped inside a drawn frame: a CSS moulding a
 photographed moulding reads as two frames. Everything else sits in a frame drawn in CSS,
 which stays sharp at any size and matches the real frames rather than stock.
 
-**Still missing: `art/books/06-activity-book.jpg`**, the *A Hole New Activity Book*
-cover, which goes in the middle of the left shelf. A cover that is not there simply is
-not on the shelf; a dashed box standing among real books looks far worse than a slightly
-emptier shelf.
+Every artifact on the wall is now a real photograph or a real cover scan. Nothing is a
+placeholder and nothing is drawn from imagination.
 
-**Also missing: `art/slab.jpg`**, the slab itself, standing in front of the books on the
-right. That one *does* get a visible placeholder, because it is the point of that shelf
-and should not be quietly forgotten.
+The one composite is **`art/slab.png`**, built by `src/make-slab.py`, and it is worth
+being precise about what that means. The real slab does not exist yet, so it is assembled
+from two files that *are* real: `slab/photos/slab-label.png`, the actual printed label
+with Jack's orange initials on it, and `slab/photos/card-front.jpg`, the actual card. Only
+the plastic is synthetic, and the plastic is the part no file could have supplied. Replace
+it with a straight-on photograph the moment there is a real one to photograph.
+
+Two things will want re-shooting when the physical wall changes:
+
+- `art/cards.jpg` shows The Wee Wee Bush in the middle slot. That card has gone into the
+  slab, so the frame holds something else now. The story panel says so.
+- `art/slab.png`, once the real slab exists.
 
 Note this machine has no outbound network. The egress proxy refuses every host,
 including `example.com`, so nothing can be fetched here. A square-on photo of the real
