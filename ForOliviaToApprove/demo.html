@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Room interactions, for approval</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:#111}
+body{
+  font:400 17px/1.5 Helvetica, Arial, sans-serif; color:#fff;
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+:root{--ease:cubic-bezier(.2,.7,.25,1)}
+
+/* The plate. One photograph, filling the panel. Everything else is a layer registered
+   to it, which is why the camera must not move between the six frames. */
+#plate{position:fixed; inset:0; overflow:hidden}
+#plate img{width:100%; height:100%; object-fit:cover; display:block}
+
+/* Light layers. On Saturday each of these is a real photograph of the room with that
+   one source on, differenced against the base frame and screened back over it. Here
+   they are approximations, because the photographs do not exist yet: the shape of the
+   light is right, the fact that it is a measurement is not. Everything else on this
+   page is final. */
+.lightlayer{
+  position:absolute; inset:0; pointer-events:none;
+  opacity:0; transition:opacity .5s var(--ease);
+  mix-blend-mode:screen;
+}
+.lightlayer.on{opacity:1}
+#layer-warm{background:radial-gradient(46% 40% at 50% -4%,
+            rgba(255,196,120,.55), rgba(255,180,105,.16) 52%, transparent 74%)}
+#layer-white{background:radial-gradient(46% 40% at 50% -4%,
+            rgba(228,240,255,.58), rgba(214,232,255,.17) 52%, transparent 74%)}
+#layer-strip{background:radial-gradient(38% 26% at 47% 44%,
+            var(--glow,#4f9dff), transparent 72%); opacity:0}
+#layer-strip.on{opacity:.34}
+
+/* The television's own screen, mapped onto its four corners in the photograph. Off is
+   a very dark grey mirror rather than black: a switched-off panel in a lit room picks
+   up the wall around it, and painting it #000 is the fastest way to make a screen look
+   like a hole cut in the picture. */
+#tvSurface{
+  position:absolute; left:0; top:0; transform-origin:0 0;
+  pointer-events:none;
+}
+#tvOff{
+  position:absolute; inset:0; opacity:0; transition:opacity .45s var(--ease);
+  background:linear-gradient(168deg,#2b3033,#171b1d 46%,#101315);
+}
+body.tv-off #tvOff{opacity:1}
+
+/* ---------------- the press caption ----------------
+   The only thing on screen that is not the room, and it exists for exactly as long as
+   your finger is down. It names the state the object is in and the state a tap will
+   move it to, so nothing is a guess, and then it is gone. Nothing persistent, no
+   labels floating over a photograph of your bedroom. */
+#cap{
+  position:fixed; z-index:40; pointer-events:none;
+  transform:translate(-50%,-50%) scale(.94);
+  opacity:0; transition:opacity .14s var(--ease), transform .14s var(--ease);
+  background:rgba(12,16,18,.82);
+  -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  border-radius:.7rem; padding:.62rem .85rem; text-align:center;
+  box-shadow:0 .5rem 1.6rem rgba(0,0,0,.45);
+  min-width:9.5rem;
+}
+#cap.on{opacity:1; transform:translate(-50%,-50%) scale(1)}
+#cap .now{
+  font:700 .72rem/1.1 Helvetica,Arial,sans-serif; letter-spacing:.09em;
+  text-transform:uppercase; color:rgba(255,255,255,.52);
+}
+#cap .next{font:700 1.06rem/1.3 Helvetica,Arial,sans-serif; margin-top:.15rem}
+#cap .hold{
+  font:400 .72rem/1.2 Helvetica,Arial,sans-serif; color:rgba(255,255,255,.5);
+  margin-top:.3rem; padding-top:.3rem; border-top:1px solid rgba(255,255,255,.14);
+}
+/* The hold ring: the press has a duration, so the press has to show it. It fills in
+   the time the hold takes, so a hold is never a guess about whether it registered. */
+#cap .ring{
+  position:absolute; left:50%; top:-.55rem; transform:translateX(-50%);
+  width:2.2rem; height:.16rem; border-radius:.16rem; overflow:hidden;
+  background:rgba(255,255,255,.18);
+}
+#cap .ring i{display:block; height:100%; width:0; background:#fff}
+#cap.holding .ring i{width:100%; transition:width .5s linear}
+
+/* ---------------- the source picker ----------------
+   The one place a list is unavoidable, because inputs have names and a name cannot be
+   cycled blind. It is mapped onto the television's own four corners, so it lies on the
+   screen at the angle the camera caught it rather than floating in front of it. */
+#picker{
+  position:absolute; left:0; top:0; transform-origin:0 0;
+  opacity:0; visibility:hidden;
+  transition:opacity .22s var(--ease), visibility .22s;
+  display:flex; align-items:center; justify-content:center; gap:2.6%;
+  padding:0 4%;
+  background:rgba(8,11,13,.66);
+  -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px);
+}
+#picker.on{opacity:1; visibility:visible}
+#picker button{
+  flex:1; height:46%; border:0; border-radius:1.4vmin;
+  background:rgba(255,255,255,.09);
+  color:#fff; font:700 3.4vmin/1.2 Helvetica,Arial,sans-serif;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:1.4vmin; cursor:pointer;
+  transition:background .14s var(--ease), transform .14s var(--ease);
+}
+#picker button .sub{
+  font:400 1.7vmin/1.2 Helvetica,Arial,sans-serif; opacity:.55; margin-top:.7vmin;
+}
+#picker button.cur{background:rgba(255,255,255,.94); color:#111}
+#picker button:active{transform:scale(.97)}
+
+/* Hit regions. Invisible, and shaped to the object rather than to a bounding box,
+   because a rectangle over the ceiling light would also cover a foot of ceiling. */
+.hit{position:absolute; cursor:pointer; -webkit-tap-highlight-color:transparent}
+
+/* The banner is part of the review page, not part of the app. */
+#banner{
+  position:fixed; left:0; right:0; bottom:0; z-index:60;
+  background:rgba(10,13,15,.86);
+  -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+  padding:.6rem .9rem; font-size:.78rem; color:rgba(255,255,255,.7);
+  display:flex; justify-content:space-between; gap:1rem; align-items:center;
+}
+#banner b{color:#fff}
+</style>
+</head>
+<body class="tv-off">
+
+<div id="plate">
+  <img id="plateImg" src="plate-temp.jpg" alt="">
+  <div class="lightlayer" id="layer-warm"></div>
+  <div class="lightlayer" id="layer-white"></div>
+  <div class="lightlayer" id="layer-strip"></div>
+  <div id="tvSurface"><div id="tvOff"></div></div>
+  <div id="picker"></div>
+</div>
+
+<div id="cap">
+  <div class="ring"><i></i></div>
+  <div class="now" id="capNow"></div>
+  <div class="next" id="capNext"></div>
+  <div class="hold" id="capHold"></div>
+</div>
+
+<div id="banner">
+  <span>Temporary plate. On Saturday every light state is a <b>real photograph</b> of the
+        room with that source on, not a gradient.</span>
+  <span id="state"></span>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+
+/* ---------- the homography, same solver as the app ---------- */
+function quadOk(pts){
+  let sign = 0;
+  for (let i = 0; i < 4; i++){
+    const [ax,ay] = pts[i], [bx,by] = pts[(i+1)%4], [cx,cy] = pts[(i+2)%4];
+    const cross = (bx-ax)*(cy-by) - (by-ay)*(cx-bx);
+    if (Math.abs(cross) < 1e-9) return false;
+    const s = Math.sign(cross);
+    if (sign === 0) sign = s; else if (s !== sign) return false;
+  }
+  return sign > 0;
+}
+function solveHomography(w, h, pts){
+  if (!pts || pts.length !== 4 || !quadOk(pts)) return null;
+  const src = [[0,0],[w,0],[w,h],[0,h]], A = [], b = [];
+  for (let i = 0; i < 4; i++){
+    const [x,y] = src[i], [u,v] = pts[i];
+    A.push([x,y,1,0,0,0,-x*u,-y*u]); b.push(u);
+    A.push([0,0,0,x,y,1,-x*v,-y*v]); b.push(v);
+  }
+  for (let col = 0; col < 8; col++){
+    let best = col;
+    for (let r = col+1; r < 8; r++) if (Math.abs(A[r][col]) > Math.abs(A[best][col])) best = r;
+    if (Math.abs(A[best][col]) < 1e-12) return null;
+    if (best !== col){ [A[col],A[best]]=[A[best],A[col]]; [b[col],b[best]]=[b[best],b[col]]; }
+    const p = A[col][col];
+    for (let r = 0; r < 8; r++){
+      if (r === col) continue;
+      const f = A[r][col] / p; if (!f) continue;
+      for (let c = col; c < 8; c++) A[r][c] -= f * A[col][c];
+      b[r] -= f * b[col];
+    }
+  }
+  return b.map((v,i) => v / A[i][i]);
+}
+function cssMatrix(w, h, pts){
+  const m = solveHomography(w, h, pts); if (!m) return null;
+  const [a,bb,c,d,e,f,g,hh] = m;
+  return 'matrix3d(' + [a,d,0,g, bb,e,0,hh, 0,0,1,0, c,f,0,1]
+    .map(v => +v.toFixed(6)).join(',') + ')';
+}
+
+/* ---------- where things are in the photograph ----------
+   Fractions of the image, not pixels, so the same numbers work at any plate resolution.
+   These were read off the photo by hand; on Saturday the calibration page writes them
+   by tapping the corners, which is both faster and more accurate than my eye. */
+const QUADS = {
+  tv: [[0.2797,0.3712],[0.6944,0.3676],[0.6912,0.6966],[0.2780,0.7040]],
+};
+const HITS = {
+  light:  {left:'40%',  top:'0%',    width:'22%', height:'8%'},
+  tv:     {left:'28%',  top:'37%',   width:'42%', height:'32%'},
+  strip:  {left:'28%',  top:'68%',   width:'42%', height:'5%'},
+  dyson:  {left:'82.5%',top:'55%',   width:'9%',  height:'30%'},
+};
+
+/* ---------- the interaction grammar ----------
+   One rule for the whole room, and it is the rule because the room is a photograph:
+   the photograph already shows the state, so nothing needs to be told to you.
+
+     tap   advance to the next state. The picture changes. That is the feedback.
+     hold  the object's one secondary thing.
+
+   Only the television gets a list, because inputs have names, and a name is the one
+   thing that cannot be cycled blind.
+
+   States are ordered so that off is always one tap from the state you leave it in
+   overnight, rather than three taps round a ring. */
+const DEVICES = {
+  light: {
+    name:'Ceiling light',
+    states:[
+      {key:'off',   label:'Off'},
+      {key:'warm',  label:'Warm'},
+      {key:'white', label:'White'},
+    ],
+    hold:{label:'Hold for the fan', run:() => cycleFan()},
+  },
+  tv: {
+    name:'TV',
+    states:[
+      {key:'off', label:'Off'},
+      {key:'on',  label:'On'},
+    ],
+    hold:{label:'Hold to pick a source', run:() => openPicker()},
+  },
+  strip: {
+    name:'Bias light',
+    states:[
+      {key:'off',   label:'Off'},
+      {key:'warm',  label:'Warm',  glow:'#ffb46b'},
+      {key:'cyan',  label:'Cyan',  glow:'#3fe0ff'},
+      {key:'pink',  label:'Pink',  glow:'#ff2e88'},
+    ],
+    hold:{label:'Hold to dim', run:() => bump('strip')},
+  },
+  dyson: {
+    name:'Dyson',
+    states:[
+      {key:'off',  label:'Off'},
+      {key:'low',  label:'Low'},
+      {key:'high', label:'High'},
+    ],
+    hold:{label:'Hold to oscillate', run:() => flash('Oscillating')},
+  },
+};
+
+const state = {light:0, tv:0, strip:0, dyson:0, fan:0};
+const FAN = ['Fan off','Fan low','Fan high'];
+
+/* Names, no icons. The Apple logo is a private-use codepoint that only renders with SF
+   Pro installed and is a tofu box everywhere else, and drawing a substitute would be a
+   fake logo on a wall panel. Three words at a size you can read from the bed is both
+   simpler and more honest, and it never breaks. */
+const SOURCES = [
+  {key:'appletv', label:'Apple TV', sub:'HDMI 1'},
+  {key:'steam',   label:'Steam',    sub:'HDMI 2'},
+  {key:'hdmi3',   label:'HDMI 3',   sub:'spare'},
+];
+let source = 'appletv';
+
+function render(){
+  const L = DEVICES.light.states[state.light].key;
+  $('#layer-warm').classList.toggle('on',  L === 'warm');
+  $('#layer-white').classList.toggle('on', L === 'white');
+
+  const S = DEVICES.strip.states[state.strip];
+  const sl = $('#layer-strip');
+  sl.classList.toggle('on', S.key !== 'off');
+  if (S.glow) sl.style.setProperty('--glow', S.glow);
+
+  document.body.classList.toggle('tv-off', DEVICES.tv.states[state.tv].key === 'off');
+  if (DEVICES.tv.states[state.tv].key === 'off') closePicker();
+
+  $('#state').textContent =
+    'light ' + DEVICES.light.states[state.light].label.toLowerCase() +
+    ' · strip ' + S.label.toLowerCase() +
+    ' · tv ' + DEVICES.tv.states[state.tv].label.toLowerCase() +
+    ' · ' + FAN[state.fan].toLowerCase();
+}
+
+function place(){
+  const img = $('#plateImg');
+  const w = img.clientWidth, h = img.clientHeight;
+  /* object-fit:cover, so the drawn image is not the element box. Work out the real
+     drawn rectangle or every overlay lands in the wrong place on any aspect ratio but
+     the photograph's own, which is every iPad. */
+  const nat = img.naturalWidth / img.naturalHeight, box = w / h;
+  const dw = box > nat ? w : h * nat;
+  const dh = box > nat ? w / nat : h;
+  const ox = (w - dw) / 2, oy = (h - dh) / 2;
+  const P = q => q.map(([fx, fy]) => [ox + fx * dw, oy + fy * dh]);
+
+  /* The television. A 1000-unit-wide box mapped onto the panel's four corners, so the
+     buttons inside are laid out in ordinary CSS and the matrix does the rest. */
+  const W = 1000, H = 562;
+  [['#tvSurface', QUADS.tv], ['#picker', QUADS.tv]].forEach(([sel, q]) => {
+    const el = $(sel);
+    el.style.width = W + 'px'; el.style.height = H + 'px';
+    const m = cssMatrix(W, H, P(q));
+    if (m) el.style.transform = m;
+  });
+
+  Object.entries(HITS).forEach(([k, r]) => {
+    let el = document.querySelector('.hit[data-k="' + k + '"]');
+    if (!el){
+      el = document.createElement('div');
+      el.className = 'hit'; el.dataset.k = k;
+      $('#plate').appendChild(el);
+      arm(el, k);
+    }
+    Object.assign(el.style, r);
+  });
+}
+
+/* ---------- press handling ----------
+   A tap and a hold are the same gesture until 500ms, so the caption goes up on
+   touch-down for both and only then diverges. The hold bar fills over exactly that
+   time, so a hold is never a guess about whether it took. */
+const HOLD_MS = 500;
+let holdTimer = null, held = false, current = null;
+
+function arm(el, key){
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    current = key; held = false;
+    const d = DEVICES[key];
+    const now = d.states[state[key]];
+    const next = d.states[(state[key] + 1) % d.states.length];
+    $('#capNow').textContent = d.name + ' · ' + (key === 'light' ? FAN[state.fan] : now.label);
+    $('#capNext').textContent = 'Tap for ' + next.label.toLowerCase();
+    $('#capHold').textContent = d.hold ? d.hold.label : '';
+    $('#capHold').style.display = d.hold ? '' : 'none';
+    const r = el.getBoundingClientRect();
+    const c = $('#cap');
+    c.style.left = (r.left + r.width / 2) + 'px';
+    c.style.top  = Math.max(64, r.top - 18) + 'px';
+    c.classList.add('on');
+    if (d.hold){
+      c.classList.remove('holding');
+      void c.offsetWidth;
+      c.classList.add('holding');
+      holdTimer = setTimeout(() => {
+        held = true;
+        if (navigator.vibrate) navigator.vibrate(12);
+        d.hold.run();
+        done();
+      }, HOLD_MS);
+    }
+  });
+}
+function done(){
+  clearTimeout(holdTimer);
+  $('#cap').classList.remove('on', 'holding');
+  current = null;
+}
+addEventListener('pointerup', () => {
+  if (!current) return;
+  if (!held){
+    const d = DEVICES[current];
+    state[current] = (state[current] + 1) % d.states.length;
+    render();
+  }
+  done();
+});
+addEventListener('pointercancel', done);
+
+function cycleFan(){ state.fan = (state.fan + 1) % 3; render(); flash(FAN[state.fan]); }
+function bump(k){ flash('Dimming ' + DEVICES[k].name.toLowerCase()); }
+function flash(msg){
+  $('#capNow').textContent = '';
+  $('#capNext').textContent = msg;
+  $('#capHold').style.display = 'none';
+  const c = $('#cap');
+  c.classList.add('on'); c.classList.remove('holding');
+  clearTimeout(flash.t);
+  flash.t = setTimeout(() => c.classList.remove('on'), 900);
+}
+
+function openPicker(){
+  if (DEVICES.tv.states[state.tv].key === 'off'){ state.tv = 1; render(); }
+  const p = $('#picker');
+  p.textContent = '';
+  SOURCES.forEach(s => {
+    const b = document.createElement('button');
+    if (s.key === source) b.className = 'cur';
+    b.innerHTML = s.label + '<span class="sub">' + s.sub + '</span>';
+    b.addEventListener('click', ev => { ev.stopPropagation(); source = s.key; closePicker(); });
+    p.appendChild(b);
+  });
+  p.classList.add('on');
+}
+function closePicker(){ $('#picker').classList.remove('on'); }
+
+addEventListener('resize', place);
+const img = $('#plateImg');
+if (img.complete) { place(); render(); }
+else img.addEventListener('load', () => { place(); render(); });
+</script>
+</body>
+</html>
