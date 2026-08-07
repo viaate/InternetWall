@@ -315,7 +315,11 @@ body.story-open #story{transform:none; visibility:visible}
   display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
   gap:1.8rem; align-items:start;
 }
-.hero{border:3px solid #000; background:#000; overflow:hidden}
+/* Capped, because a portrait photo at full column width is taller than the panel and
+   pushed the text and the QR below the fold on a screen nobody scrolls. */
+.hero{border:3px solid #000; background:#000; overflow:hidden;
+      max-height:calc(100vh - 12rem); display:flex; justify-content:center}
+.hero img{max-height:calc(100vh - 12.4rem); width:auto; object-fit:contain}
 /* The books get their covers laid out instead of one photograph, aligned along the
    bottom so the shorter activity book sits on the same line as the rest. */
 .heroRow{display:flex; align-items:flex-end; gap:.7rem}
@@ -354,6 +358,9 @@ body.story-open #story{transform:none; visibility:visible}
 }
 .ref div{margin-bottom:.5rem}
 .ref b{display:block; font-size:.9rem; color:#111}
+/* The lead-in is one sentence, so its bold half must stay inline with the rest. */
+.refLead{margin-bottom:.8rem; color:#666}
+.refLead b{display:inline; color:#111}
 .ref code{
   font:400 .82rem/1.4 ui-monospace,Menlo,Consolas,monospace;
   background:#f2f2ee; padding:.1em .3em; word-break:break-all;
@@ -1080,9 +1087,11 @@ function openStory(key){
     (p.body || []).forEach(t => prose.appendChild(el('p', null, t)));
     if (p.refs && p.refs.length){
       const r = el('div', 'ref');
-      r.appendChild(el('div', null,
-        '<b>Point your phone at these</b>' +
-        '<span style="color:#666">, because this iPad deliberately cannot leave the app.</span>'));
+      /* One element, not a bold block plus a trailing span. `.ref b` is display:block, so
+         the second half broke onto its own line and the panel read ", because this iPad
+         deliberately cannot leave the app." starting with a comma. */
+      r.appendChild(el('div', 'refLead',
+        '<b>Point your phone at these.</b> This iPad deliberately cannot leave the app.'));
       p.refs.forEach(x => r.appendChild(qrBlock(x.qr, x.b, x.u)));
       prose.appendChild(r);
     }
