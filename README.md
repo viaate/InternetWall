@@ -66,6 +66,22 @@ Then, on the iPad:
    lock it to the app.
 5. Turn **auto-brightness off**, then calibrate the idle level (below).
 
+### If the iPad is showing an old build
+
+That was a bug, now fixed, but a device that already caught it stays stuck until it is
+cleared by hand. `sw.js` used to be cache-first on everything against a version string
+that never changed, so once a device installed the worker it served that `index.html` for
+ever and no deploy could reach it.
+
+To unstick one: open the app, long-press bare wall, press **Force update from the server**.
+If the app is too old to have that button, delete the home-screen icon, then in
+**Settings → Safari → Advanced → Website Data** remove the site, and add it again.
+
+From now on the page is fetched network-first, other assets are served from cache but
+re-fetched in the background, and the page reloads itself when a new worker takes over.
+Run `python3 src/stamp-build.py` before pushing so `sw.js` changes bytes each deploy;
+a browser only re-evaluates a worker whose own bytes changed.
+
 Video is not precached at install on purpose. `cache.addAll` is all-or-nothing, so one
 86MB failure would throw away the entire install and the app would silently never go
 offline.

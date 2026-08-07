@@ -19,7 +19,10 @@
    before, just not offline. index.html handles that case rather than assuming.
 */
 
-const VERSION = 'wall-v1';
+/* Bump this on every deploy. It is the only thing that evicts an old cache.
+   BUILD is stamped by src/stamp-build.py so nobody has to remember. */
+const VERSION = 'wall-v2';
+const BUILD = '41aa773';
 const SHELL_CACHE = VERSION + '-shell';
 const MEDIA_CACHE = VERSION + '-media';
 
@@ -135,25 +138,45 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  /* The page itself is network-first, and this is the whole reason the app could not be
+     updated. Everything was cache-first against a VERSION string that never changed, so
+     once a device had installed the worker it served that index.html for ever: no deploy
+     could reach it, and the wall stayed on whatever build it first saw. A wall-mounted
+     iPad is exactly the device nobody thinks to clear the cache on.
+
+     Network-first with a short timeout keeps the offline promise intact. If the network
+     answers, that answer is fresh and gets stored. If it does not, the cache serves and
+     the app opens anyway. */
+  const isPage = req.mode === 'navigate' ||
+                 url.pathname.endsWith('/') ||
+                 url.pathname.endsWith('/index.html');
+
+  if (isPage) {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(new Request(req.url, {cache: 'reload'}));
+        if (fresh.ok) (await caches.open(SHELL_CACHE)).put('./index.html', fresh.clone());
+        return fresh;
+      } catch (e) {
+        const hit = await caches.match('./index.html');
+        if (hit) return hit;
+        throw e;
+      }
+    })());
+    return;
+  }
+
+  /* Everything else: serve from cache so it is instant and works offline, but always
+     re-fetch in the background so the next load has the new one. Pure cache-first meant
+     a corrected photograph never replaced the one already stored. */
   event.respondWith((async () => {
-    const hit = await caches.match(req, {ignoreSearch: true});
-    if (hit) return hit;
-    try {
-      const fresh = await fetch(req);
-      if (fresh.ok) {
-        const cache = await caches.open(SHELL_CACHE);
-        cache.put(req, fresh.clone());
-      }
+    const cache = await caches.open(SHELL_CACHE);
+    const hit = await cache.match(req, {ignoreSearch: true});
+    const network = fetch(req).then(fresh => {
+      if (fresh.ok) cache.put(req, fresh.clone());
       return fresh;
-    } catch (e) {
-      /* A navigation that misses the cache should still land on the wall rather than
-         on Safari's error page, which inside Guided Access is a dead end. */
-      if (req.mode === 'navigate') {
-        const shell = await caches.match('./index.html');
-        if (shell) return shell;
-      }
-      throw e;
-    }
+    }).catch(() => null);
+    return hit || (await network) || Response.error();
   })());
 });
 

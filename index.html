@@ -565,6 +565,8 @@ body.idle #wall::after{opacity:.5}
     <p class="hint" id="offlineState" style="margin:0 0 .5rem">Checking…</p>
     <button id="setCache" style="width:100%;padding:.7rem;border:3px solid #000;
             background:#fff;font-weight:700;cursor:pointer">Save all 8 clips to this iPad</button>
+    <button id="setPurge" style="width:100%;padding:.6rem;margin-top:.5rem;border:2px solid #000;
+            background:#fff;cursor:pointer;font-size:.85rem">Force update from the server</button>
   </div>
   <div class="go">
     <button id="setReset">Reset</button>
@@ -1521,8 +1523,19 @@ let swReg = null;
 function offlineState(msg){ const n = $('#offlineState'); if (n) n.textContent = msg; }
 
 if ('serviceWorker' in navigator){
+  /* Reload once when a new worker takes control, so a deploy actually lands. Without
+     this the old page keeps running against the new worker until somebody happens to
+     close and reopen the app, which on a wall-mounted iPad is never. */
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
+
   navigator.serviceWorker.register('sw.js').then(reg => {
     swReg = reg;
+    reg.update();                       // check for a new build on every open
     offlineState('The wall and every photo are saved. Clips are saved as you play them.');
   }).catch(() => {
     offlineState('Could not register. Needs https, or localhost.');
@@ -1541,6 +1554,21 @@ if ('serviceWorker' in navigator){
 } else {
   offlineState('This browser has no service worker, so nothing is saved for offline.');
 }
+
+/* The escape hatch. An early version of sw.js was cache-first on everything with a
+   version string that never changed, so any device that installed it served that build
+   for ever and no deploy could reach it. This tears the whole thing down by hand, which
+   is the only fix from inside the app once a device is in that state. */
+$('#setPurge').addEventListener('click', async () => {
+  offlineState('Clearing…');
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+  } catch (e) {}
+  location.reload(true);
+});
 
 $('#setCache').addEventListener('click', () => {
   const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
