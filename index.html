@@ -124,149 +124,139 @@ button{font:inherit;color:inherit;margin:0}
     radial-gradient(95% 70% at 88% 96%, rgba(0,0,0,.06), transparent 60%);
 }
 
+#pages{position:absolute; inset:0; transform-style:preserve-3d}
+.page{
+  position:absolute; inset:0;
+  transform:translateX(calc((var(--i) - var(--page, 0)) * 100%));
+  transition:transform .44s var(--ease);
+  transform-style:preserve-3d;
+}
+/* Only the page in view takes touches, or the one off-screen would swallow taps. */
+.page{visibility:hidden}
+.page.here{visibility:visible}
 #plane{position:absolute; inset:0; transform-style:preserve-3d}
 
-.piece{
-  position:absolute;
-  left:var(--x); width:var(--w);
-  transition:transform .28s var(--ease), opacity .7s var(--ease);
-  transform:translateZ(var(--z, 1.4vw));
+#dots{
+  position:fixed; left:50%; bottom:1.1vw; transform:translateX(-50%);
+  z-index:30; display:flex; gap:.6vw;
 }
-/* Frames are placed by their top edge. Ledges are placed by their bottom edge, so
-   the shelf line stays exactly where it was drilled no matter how tall whatever is
-   standing on it turns out to be. Swapping a placeholder for a real photo of the
-   loaded shelf then cannot move the shelf. */
-/* A piece sets exactly one of --y or --b. Anything hung from the ceiling line uses --y;
-   anything standing on, or lining up with, the shelf line uses --b, so the two stay
-   locked together no matter what is on the shelf. */
-.piece.frame,
-.piece.photo{top:var(--y, auto); bottom:var(--b, auto)}
-.piece.ledge{bottom:var(--b)}
-.piece:active{transform:translateZ(var(--z, 1.4vw)) scale(.985)}
+#dots button{
+  width:.75vw; height:.75vw; min-width:7px; min-height:7px; padding:0;
+  border-radius:50%; border:0; cursor:pointer;
+  background:rgba(40,48,42,.28);
+}
+#dots button.on{background:rgba(40,48,42,.62)}
+body.idle #dots{opacity:0; visibility:hidden; transition:opacity .8s, visibility 0s .8s}
 
-/* ---------------- a framed picture, drawn rather than photographed ----------------
-   Moulding, mat, and a recessed opening. The whole illusion is three things:
-   the mat is lighter than the moulding, the moulding casts a hard little shadow
-   down onto the mat, and the print sits below the mat rather than on it. */
-.moulding{
-  padding:var(--mould, 5.4%);
-  border-radius:1.5px;
-  background:linear-gradient(157deg,#fff 0%,#faf9f5 34%,#efede5 72%,#e7e4da 100%);
-  box-shadow:
-    0 0 0 1px rgba(96,94,84,.34),
-    inset 0 1.5px 0 rgba(255,255,255,.98),
-    inset 0 -1.5px 0 rgba(0,0,0,.11),
-    inset 1.5px 0 0 rgba(255,255,255,.55),
-    inset -1.5px 0 0 rgba(0,0,0,.07),
-    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
-    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
-}
-.mat{
-  padding:var(--matV, 10%) var(--matH, 10%);
-  background:linear-gradient(162deg,#fdfdfa 0%,#f7f5ee 60%,#f1efe6 100%);
-  box-shadow:inset 0 .18vw .34vw rgba(0,0,0,.16);
-}
-.opening{
-  position:relative;
-  aspect-ratio:var(--ratio, 1.25);
-  overflow:hidden;
-  background:#ddd;
-  /* the cut edge of the mat board, lit from above */
-  box-shadow:
-    0 0 0 1px rgba(140,134,118,.55),
-    inset 0 .22vw .42vw rgba(0,0,0,.42),
-    inset 0 -.06vw .1vw rgba(255,255,255,.35);
-}
-.opening img{width:100%;height:100%;object-fit:cover}
+/* ---------------- the room ----------------
+   Apple's Home app, not tvOS, and the difference matters. tvOS is dark because a TV is
+   watched in a dark room from across it. This is a panel on a light wall, read in passing
+   at arm's length, which is the case Home is designed for: light frosted tiles that tint
+   when the thing is on, so the state is the design rather than an afterthought.
 
-/* Deep box frame for the card frame and the Shrek print: shallow mat, print sits
-   further back, so the moulding is thinner and the opening shadow is stronger.
-   Named .deep and not .box on purpose, because .box is the story panel's callout and
-   when this was called .box the card frame inherited a 3px black border and a
-   pink drop shadow from it. */
-.piece.deep .mat{background:linear-gradient(160deg,#fcfcf9,#f2f0e8)}
-/* Some pieces are photographs of the real frame, so they are shown whole and get only
-   the wall shadow. Drawing a moulding around a photographed moulding reads as two
-   frames, which is worse than either on its own. */
-.piece.photo img{
-  width:100%; height:auto; border-radius:1.5px;
-  box-shadow:
-    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
-    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
-}
+   The wall stays behind it. Replacing it with black made this page look like a different
+   app bolted on.
 
-.piece.deep .opening{box-shadow:
-  0 0 0 1px rgba(140,134,118,.55),
-  inset 0 .3vw .55vw rgba(0,0,0,.5),
-  inset 0 -.06vw .1vw rgba(255,255,255,.3)}
+   Every guide on wall panels says the same two things and the first version had neither:
+   targets of at least 48px, bigger for something tapped while walking past, and glanceable
+   state. A grid of identical buttons cannot tell you what is already on, so you end up
+   pressing one to find out. */
 
-/* ---------------- picture ledge ---------------- */
-.ledge{--shelfh:1.53vw; --z:2.6vw}   /* an ~1.1in ledge lip at WALL_IN=72 */
-.ledge .goods{
-  display:flex; align-items:flex-end; justify-content:center;
-  gap:.3vw; padding:0 .5vw;
-  min-height:6vw;
+.roomwrap{position:absolute; inset:0; padding:2.8vw 3vw 3.6vw; display:flex; flex-direction:column;
+          font-family:system-ui, -apple-system, "SF Pro Display", Helvetica, Arial, sans-serif}
+.roomhead{display:flex; align-items:center; gap:1.2vw; margin-bottom:1.4vw}
+.roomhead h2{
+  margin:0; font:700 clamp(1.5rem,2.7vw,2.3rem)/1 inherit;
+  letter-spacing:-.025em; color:#20261f;
 }
-/* Books keep their true size and lean on each other if the shelf is too short for them,
-   which is what happens on a real ledge. Shrinking them to fit would have quietly broken
-   the scale that the rest of this layout depends on. */
-.ledge .goods img{flex:0 0 auto; margin-inline:calc(var(--squeeze, 0px) / -2)}
-.ledge .goods img{
-  height:var(--goods-h, 11vw); width:auto; max-width:none;
-  align-self:flex-end;
-  /* Standing on a shelf, lit from above: a tight contact shadow where the book meets
-     the ledge, and a longer one falling back onto the wall behind. */
-  box-shadow:
-    0 .12vw .2vw rgba(30,36,30,.4),
-    .12vw .5vw .9vw rgba(30,36,30,.3);
+.bridge{
+  display:flex; align-items:center; gap:.45rem; font-size:.8rem; font-weight:600;
+  color:#4a5449; background:rgba(255,255,255,.55); padding:.35rem .75rem; border-radius:2rem;
 }
-.ledge .goods{position:relative}
-/* The slab is 4.62in tall against an 8.7in book, so it stands at 0.53 of the shelf's
-   book height. It was eyeballed at .66 first, which made it taller than a real slab and
-   left it looking like a small book rather than a cased card. */
-.ledge .goods img.front{
-  position:absolute; left:50%; bottom:0; transform:translateX(-50%);
-  height:var(--front-h, 6vw); z-index:2;
-  box-shadow:0 .1vw .18vw rgba(30,36,30,.45), .1vw .4vw .8vw rgba(30,36,30,.34);
-}
-.ledge .goods .frontTodo{
-  position:absolute; left:50%; bottom:0; transform:translateX(-50%); z-index:2;
-  height:var(--front-h, 6vw); aspect-ratio:.61;
-  border:.2vw dashed rgba(60,66,58,.62); background:rgba(250,250,247,.94);
-  display:flex; align-items:center; justify-content:center;
-  font:700 clamp(8px,.72vw,12px)/1 Helvetica,Arial,sans-serif;
-  color:rgba(38,44,38,.66); letter-spacing:.04em; text-transform:uppercase;
-}
-.ledge .shelf img{width:100%; height:100%; object-fit:fill; border-radius:0}
-.ledge .shelf.hasphoto{background:none; box-shadow:
-  0 var(--lift) calc(var(--lift)*1.6) rgba(42,48,42,.24),
-  0 var(--cast) calc(var(--cast)*1.9) rgba(42,48,42,.24)}
-.ledge .shelf{
-  height:var(--shelfh);
-  border-radius:0 0 2px 2px;
-  background:linear-gradient(#fdfdfb 0 38%, #f2f1eb 38% 70%, #e6e4dc 100%);
-  box-shadow:
-    0 0 0 1px rgba(96,94,84,.3),
-    inset 0 1px 0 rgba(255,255,255,.95),
-    0 var(--lift) calc(var(--lift)*1.6) rgba(42,48,42,.24),
-    0 var(--cast) calc(var(--cast)*1.9) rgba(42,48,42,.24);
-}
+.bridge .dot{width:.5rem; height:.5rem; border-radius:50%; background:#c99a12; flex:0 0 auto}
+.bridge.up .dot{background:#2fa84f}
+.bridge.down .dot{background:#d1453b}
 
-/* Stand-in for an artifact whose photograph has not been taken yet. Deliberately
-   plain and obviously provisional: a bad fake is worse than an honest gap, and
-   this way nothing on the wall is ever pretending to be something it is not. */
-.todo{
-  aspect-ratio:var(--ratio, 1.25);
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:.35em; text-align:center; padding:.6em;
-  border:.22vw dashed rgba(60,66,58,.42);
-  border-radius:2px;
-  background:rgba(255,255,255,.30);
-  color:rgba(38,44,38,.66);
+/* One key size for everything, and the sections stacked. Side by side they had different
+   button sizes in each half, which read as two unrelated widgets rather than one panel.
+   --key is the only dimension here; everything else is built from it. */
+/* The tile: frosted white when off, filled with the device's colour when on, the way the
+   Home app does it. The fill is the state, and the state is what you read from across a
+   room without touching anything. */
+.tile{
+  position:relative; border:0; cursor:pointer; text-align:left;
+  padding:1vw 1.1vw; border-radius:1.3vw; overflow:hidden;
+  min-height:7.4vw;                        /* ~97pt, well past the 48px floor */
+  display:flex; flex-direction:column; justify-content:space-between; gap:.7vw;
+  background:rgba(255,255,255,.62);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.75),
+    0 .12vw .3vw rgba(38,46,38,.1),
+    0 .5vw 1.1vw rgba(38,46,38,.13);
+  font:inherit; color:#1d231c;
+  -webkit-user-select:none; user-select:none;
+  transition:transform .12s ease, background .22s ease, box-shadow .22s ease, color .22s ease;
 }
-.todo b{font:700 clamp(9px,.86vw,15px)/1.2 Helvetica,Arial,sans-serif;letter-spacing:.02em}
-.todo span{font:400 clamp(8px,.7vw,12px)/1.25 Helvetica,Arial,sans-serif;opacity:.8}
-.ledge .todo{width:100%}
+.tile:active{transform:scale(.975)}
+.tile .ico{
+  width:3.4vw; height:3.4vw; min-width:34px; min-height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  background:rgba(32,38,31,.09); color:#20261f;
+  transition:background .22s ease, color .22s ease;
+}
+.tile .ico svg{width:56%; height:56%; display:block}
+.tile .lab{min-width:0}
+.tile .lab b{display:block; font:600 clamp(.85rem,1.15vw,1.1rem)/1.15 inherit; letter-spacing:-.01em}
+.tile .lab span{
+  display:block; margin-top:.15em; font:500 clamp(.72rem,.95vw,.9rem)/1.2 inherit;
+  color:rgba(29,35,28,.5);
+}
+.tile.live{background:var(--tint, #2f7bd6); color:#fff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.28), 0 .5vw 1.3vw rgba(38,46,38,.22)}
+.tile.live .ico{background:rgba(255,255,255,.24); color:#fff}
+.tile.live .lab span{color:rgba(255,255,255,.75)}
+.tile[disabled]{opacity:.4; cursor:default}
+.tile[disabled]:active{transform:none}
+
+.decks{--key:6.1vw; display:flex; flex-direction:column; gap:1.6vw; min-width:0}
+.shelf{min-width:0}
+.shelf > h3{
+  margin:0 0 .7vw; font:600 clamp(.8rem,1.1vw,1rem)/1 inherit;
+  color:rgba(32,38,31,.55);
+}
+.row{display:grid; gap:1vw; grid-template-columns:repeat(var(--cols, 3), minmax(0, 1fr))}
+.row.cluster{display:flex; gap:1.4vw; align-items:center; flex-wrap:wrap}
+
+/* The cross. Direction is spatial: in a labelled row you have to read "left" before you
+   can press it, which defeats the point of a directional pad. */
+.dpad{
+  display:grid; grid-template-columns:repeat(3, var(--key));
+  grid-template-rows:repeat(3, var(--key)); gap:.6vw; flex:0 0 auto;
+}
+/* Volume stacked, louder above quieter, for the same reason. Same key size as everything. */
+.rocker{display:grid; grid-template-rows:repeat(2, var(--key)); gap:.6vw;
+        width:var(--key); flex:0 0 auto}
+.keys{display:flex; gap:.6vw; flex:0 0 auto}
+.keys .tile{width:var(--key); height:var(--key)}
+
+.dpad .tile, .rocker .tile{
+  min-height:0; height:auto; padding:0; border-radius:1.2vw;
+  align-items:center; justify-content:center;
+}
+.dpad .tile .ico, .rocker .tile .ico, .keys .tile .ico{
+  width:2.4vw; height:2.4vw; background:none;
+}
+.dpad .tile .lab, .rocker .tile .lab{display:none}
+.dpad .hole{visibility:hidden}
+.dpad .mid{background:rgba(255,255,255,.92)}
+.dpad .mid .ico{font:700 clamp(.85rem,1.2vw,1.15rem)/1 inherit; color:#1d231c}
+
+.keys .tile{
+  min-height:0; padding:0; border-radius:1.2vw;
+  align-items:center; justify-content:center; gap:.3vw;
+}
+.keys .tile .lab b{font:600 clamp(.66rem,.85vw,.84rem)/1.1 inherit; text-align:center}
+.keys .tile .lab{text-align:center}
 
 /* ============================ story panel ============================ */
 
@@ -463,7 +453,13 @@ body.story-open #story{transform:none; visibility:visible}
   transition:opacity 1.6s var(--ease);
 }
 body.idle #dim{opacity:var(--dim,.34)}
-body.idle #plane{opacity:0; pointer-events:none}
+/* visibility, not just opacity. At opacity 0 the pieces are invisible but still
+   composited every frame the compositor wakes for; hiding them drops the whole subtree
+   out of the render tree. The delayed visibility transition lets the fade finish first.
+   On a panel that is lit for eighteen hours a day, free is worth having. */
+body.idle #plane{opacity:0; visibility:hidden; pointer-events:none;
+                 transition:opacity .7s var(--ease), visibility 0s linear .7s}
+#plane{visibility:visible; transition:opacity .7s var(--ease), visibility 0s}
 body.idle #wall::after{opacity:.5}
 
 /* ============================ panels ============================ */
@@ -522,8 +518,20 @@ body.idle #wall::after{opacity:.5}
 
 <div id="stage"><div id="scene">
   <div id="wall"></div>
-  <div id="plane"></div>
+  <div id="pages">
+    <section class="page" id="page-wall" style="--i:0"><div id="plane"></div></section>
+    <section class="page" id="page-room" style="--i:1">
+      <div class="roomwrap">
+        <header class="roomhead">
+          <h2>The room</h2>
+          <div class="bridge" id="bridgeState"><span class="dot"></span><span id="bridgeText">looking for the bridge…</span></div>
+        </header>
+        <div class="decks" id="decks"></div>
+      </div>
+    </section>
+  </div>
 </div></div>
+<div id="dots"><button data-page="0" class="on" aria-label="The wall"></button><button data-page="1" aria-label="The room"></button></div>
 
 <div id="story" aria-hidden="true">
   <div id="storyTop">
@@ -559,6 +567,14 @@ body.idle #wall::after{opacity:.5}
   <div class="row">
     <label>Idle after: <span class="val" id="setIdleVal"></span></label>
     <input type="range" id="setIdle" min="1" max="60" step="1">
+  </div>
+  <div class="row">
+    <label>Bridge address</label>
+    <input type="text" id="setBridge" inputmode="url" autocapitalize="off" autocorrect="off"
+           spellcheck="false" placeholder="https://raspberrypi.local:8443"
+           style="width:100%;padding:.5rem;border:2px solid #000;font:inherit">
+    <p class="hint" style="margin:.35rem 0 0">The Pi running <code>bridge/</code>. Must be
+      https, or Safari will block it from this page.</p>
   </div>
   <div class="row" id="offlineRow">
     <label>Offline</label>
@@ -887,7 +903,7 @@ const byKey = k => PIECES.find(p => p.key === k);
 
 /* ====================== settings ====================== */
 
-const DEFAULTS = { wall:'#c6d1cf', dim:34, idleMin:15 };
+const DEFAULTS = { wall:'#c6d1cf', dim:34, idleMin:15, bridge:'' };
 let cfg = Object.assign({}, DEFAULTS);
 
 function loadCfg(){
@@ -1317,6 +1333,229 @@ function scoreboard(){
   return sec;
 }
 
+/* ====================== the room ======================
+
+   Every control here goes through a bridge on the LAN, because none of these devices can
+   be reached from a browser at all:
+
+     Apple TV   proprietary Companion/MRP protocol with a pairing handshake. No web API
+                exists, in any browser.
+     Samsung    does have a WebSocket API, but it is served with a self-signed certificate
+                on wss://, which Safari refuses, and there is no way to accept a certificate
+                exception for a WebSocket the way there is for a page. Its plaintext port
+                is blocked by mixed-content rules.
+     the PCs    Wake-on-LAN is a raw UDP broadcast. Browsers have no UDP.
+
+   So bridge/ runs on the Pi and does all of it over HTTPS, and this file only ever speaks
+   JSON to that. If the bridge is not answering, the room page says so plainly rather than
+   leaving dead buttons that look like they might work.
+   ====================================================================== */
+
+const ICON = {
+  apple: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 1.43c0 1.14-.42 2.2-1.25 3.02-.99.99-2.09 1.56-3.28 1.47-.02-.13-.04-.27-.04-.42 0-1.09.47-2.24 1.28-3.05.4-.41.92-.75 1.56-1.03.63-.27 1.23-.42 1.79-.44.01.15.02.3.02.45zM20.9 17.13c-.32.73-.7 1.4-1.14 2.02-.6.85-1.09 1.44-1.47 1.77-.59.54-1.22.82-1.9.84-.48 0-1.07-.14-1.75-.42-.68-.28-1.31-.42-1.88-.42-.6 0-1.24.14-1.93.42-.69.28-1.25.43-1.67.44-.65.03-1.29-.26-1.92-.86-.41-.36-.92-.97-1.53-1.83-.65-.92-1.19-1.99-1.61-3.21-.45-1.32-.68-2.6-.68-3.83 0-1.42.31-2.64.92-3.66.48-.82 1.12-1.47 1.92-1.94.8-.47 1.66-.71 2.59-.73.51 0 1.19.16 2.02.47.83.31 1.37.47 1.6.47.18 0 .77-.19 1.78-.55.95-.34 1.75-.48 2.41-.42 1.78.14 3.12.85 4.01 2.11-1.59.96-2.38 2.31-2.36 4.04.01 1.35.5 2.47 1.47 3.36.44.42.93.74 1.48.97-.12.35-.25.68-.38 1z"/></svg>',
+  gpu:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="8.5" cy="12" r="2.6"/><circle cx="16" cy="12" r="1.6"/><path d="M5 21v-3M19 21v-3"/></svg>',
+  steam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><circle cx="15.4" cy="9" r="2.9"/><circle cx="8.4" cy="14.6" r="2.1"/><path d="M10.2 13.1l3.1-2"/></svg>',
+  up:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 6l7 9H5z"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 18l-7-9h14z"/></svg>',
+  left:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 12l9-7v14z"/></svg>',
+  right:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 12l-9 7V5z"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h3.4v16H7zm6.6 0H17v16h-3.4z"/></svg>',
+  power:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.6 6.6a8 8 0 1 0 10.8 0"/></svg>',
+  mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>',
+  volup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
+  voldn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><path d="M8 21h8"/></svg>',
+  source:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>',
+  ok:'OK'
+};
+
+/* Sources first and biggest, because "put the Steam Machine on" is what anyone actually
+   walks up to this for. Each one reports whether it is the live input, so the panel answers
+   the question before you touch it. */
+/* Sources are only the things that actually appear on the TV. The gaming PC is a separate
+   machine on its own monitors, so putting it in this row would have been a lie the panel
+   told every time you looked at it. It gets its own tile below. */
+const SHELVES = [
+  { title:'On the TV', cols:3, keys:[
+      { device:'inputs', action:'hdmi1', label:'Apple TV', sub:'HDMI 1',
+        icon:'apple', tint:'#1c1c1e', state:'input:hdmi1' },
+      { device:'inputs', action:'hdmi3', label:'Steam Machine', sub:'HDMI 3',
+        icon:'steam', tint:'#1b4f72', state:'input:hdmi3' },
+      { device:'pcs', action:'wake_gaming', label:'Gaming PC', sub:'Wake it up',
+        icon:'gpu', tint:'#c0392b', state:'pc:gaming' }
+  ]},
+  { title:'Apple TV', cluster:true,
+    dpad:{ device:'appletv',
+           up:'up', down:'down', left:'left', right:'right', mid:'select', midLabel:'OK' },
+    keys:[{ device:'appletv', action:'menu', icon:'menu', label:'Back' },
+          { device:'appletv', action:'home', icon:'home', label:'Home' },
+          { device:'appletv', action:'play_pause', icon:'play', label:'Play' }] },
+  { title:'TV', cluster:true,
+    rocker:{ device:'tv', up:'volume_up', down:'volume_down', upIcon:'volup', downIcon:'voldn' },
+    keys:[{ device:'tv', action:'power', icon:'power', label:'Power', tint:'#c0392b', state:'tv:on' },
+          { device:'tv', action:'mute', icon:'mute', label:'Mute', state:'tv:muted' },
+          { device:'tv', action:'source', icon:'source', label:'Source' },
+          { device:'tv', action:'home', icon:'home', label:'Hub' }] }
+];
+
+const decksEl = $('#decks');
+const stateful = [];              // tiles that reflect something, redrawn from /state
+
+function tile(k, cls){
+  const t = el('button', 'tile' + (cls ? ' ' + cls : ''));
+  t.type = 'button';
+  if (k.tint) t.style.setProperty('--tint', k.tint);
+  t.appendChild(el('div', 'ico', k.text || ICON[k.icon] || ''));
+  t.appendChild(el('div', 'lab',
+    '<b>' + esc(k.label || '') + '</b>' + (k.sub ? '<span>' + esc(k.sub) + '</span>' : '')));
+  if (k.state){ t.dataset.state = k.state; stateful.push(t); }
+  t.setAttribute('aria-label', k.label || k.action);
+  t.addEventListener('click', () => send(k.device, k.action, t));
+  return t;
+}
+
+SHELVES.forEach(shelf => {
+  const sec = el('section', 'shelf');
+  sec.appendChild(el('h3', null, esc(shelf.title)));
+  const row = el('div', 'row' + (shelf.cluster ? ' cluster' : ''));
+  if (shelf.cols) row.style.setProperty('--cols', shelf.cols);
+
+  if (shelf.dpad){
+    const d = shelf.dpad;
+    const pad = el('div', 'dpad');
+    const arrow = (action, icon, label) =>
+      tile({device:d.device, action, icon, label}, null);
+    pad.append(
+      el('div','tile hole'), arrow(d.up,'up','Up'), el('div','tile hole'),
+      arrow(d.left,'left','Left'),
+      tile({device:d.device, action:d.mid, text:d.midLabel, label:d.midLabel}, 'mid'),
+      arrow(d.right,'right','Right'),
+      el('div','tile hole'), arrow(d.down,'down','Down'), el('div','tile hole'));
+    row.appendChild(pad);
+  }
+
+  if (shelf.rocker){
+    const r = shelf.rocker;
+    const rock = el('div', 'rocker');
+    rock.append(tile({device:r.device, action:r.up, icon:r.upIcon, label:'Louder'}),
+                tile({device:r.device, action:r.down, icon:r.downIcon, label:'Quieter'}));
+    row.appendChild(rock);
+  }
+
+  if (shelf.keys && shelf.keys.length){
+    const wrap = shelf.cluster ? el('div', 'keys') : row;
+    if (shelf.cluster) wrap.style.setProperty('--kcols', Math.min(shelf.keys.length, 4));
+    shelf.keys.forEach(k => wrap.appendChild(tile(k, shelf.cluster ? 'key' : '')));
+    if (shelf.cluster) row.appendChild(wrap);
+  }
+
+  sec.appendChild(row);
+  decksEl.appendChild(sec);
+});
+
+/* Paint what is actually on. A panel that only offers buttons makes you press one to find
+   out what was already happening, which is the thing every wall-panel guide warns about. */
+function paintState(st){
+  stateful.forEach(t => {
+    const [kind, want] = t.dataset.state.split(':');
+    let live = false;
+    if (kind === 'input') live = st && st.input === want;
+    if (kind === 'tv') live = st && (want === 'on' ? st.tv_on : st.muted);
+    if (kind === 'pc') live = st && st.pcs && st.pcs[want];
+    t.classList.toggle('live', !!live);
+    const sub = t.querySelector('.lab span');
+    if (!sub) return;
+    if (kind === 'input') sub.textContent = live ? 'On the TV now' : t.dataset.sub;
+    if (kind === 'pc') sub.textContent = live ? 'Awake' : t.dataset.sub;
+  });
+}
+/* Remember each tile's resting caption before any state arrives, so it can be put back
+   when the thing goes off again. */
+document.querySelectorAll('.tile[data-state]').forEach(t => {
+  const sp = t.querySelector('.lab span');
+  if (sp) t.dataset.sub = sp.textContent;
+});
+
+/* ---------------- talking to the bridge ---------------- */
+
+const bridgeEl = $('#bridgeState');
+const bridgeTx = $('#bridgeText');
+let bridgeUp = false;
+
+function bridgeUrl(path){
+  const base = (cfg.bridge || '').replace(/\/+$/, '');
+  return base ? base + path : null;
+}
+
+function setBridge(up, text){
+  bridgeUp = up;
+  bridgeEl.className = 'bridge ' + (up ? 'up' : 'down');
+  bridgeTx.textContent = text;
+  decksEl.querySelectorAll('.tile').forEach(b => { b.disabled = !up; });
+}
+
+async function pingBridge(){
+  const u = bridgeUrl('/health');
+  if (!u){ setBridge(false, 'no bridge address set. Long-press the wall to add one.'); return; }
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch(u, {signal: ctl.signal, cache: 'no-store'});
+    clearTimeout(t);
+    const j = await r.json();
+    setBridge(true, j.devices ? j.devices.join(' \u00b7 ') : 'bridge up');
+    paintState(j.state);
+  } catch (e) {
+    setBridge(false, 'bridge not answering');
+  }
+}
+
+let sending = false;
+async function send(device, action, btn){
+  if (!bridgeUp || sending) return;
+  const u = bridgeUrl('/cmd');
+  if (!u) return;
+  sending = true;
+  btn.classList.add('on');
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 4000);
+    const r = await fetch(u, {method:'POST', signal: ctl.signal,
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({device, action})});
+    clearTimeout(t);
+    if (!r.ok) throw new Error(r.status);
+  } catch (e) {
+    setBridge(false, 'that command did not go through');
+    setTimeout(pingBridge, 1500);
+  } finally {
+    sending = false;
+    setTimeout(() => btn.classList.remove('on'), 160);
+  }
+}
+
+/* ---------------- pages ---------------- */
+
+const pagesEl = $('#pages');
+const pageEls = [...document.querySelectorAll('.page')];
+let page = 0;
+
+function setPage(n){
+  page = Math.max(0, Math.min(pageEls.length - 1, n));
+  pagesEl.style.setProperty('--page', page);
+  pageEls.forEach((el2, i) => el2.classList.toggle('here', i === page));
+  document.querySelectorAll('#dots button').forEach((b, i) =>
+    b.classList.toggle('on', i === page));
+  if (page === 1) pingBridge();
+  resetIdle();
+}
+document.querySelectorAll('#dots button').forEach(b =>
+  b.addEventListener('click', () => setPage(+b.dataset.page)));
+/* setPage is NOT called here. It calls resetIdle(), and idleTimer is a `let` declared
+   further down, so running it at this point dies in the temporal dead zone. It is called
+   from the boot block at the end instead, once everything exists. */
+
 /* ====================== looking around ======================
    Drag anywhere on the wall and the camera leans. It springs back on release, because
    this is a wall, not a viewer: it should always settle to square-on so it goes back to
@@ -1332,7 +1571,8 @@ const stage = $('#stage');
 const MAX_TILT = 7;          // degrees. More than this and the illusion breaks down.
 const DRAG_PX = 10;
 
-let dragFrom = null, dragging = false, swallowClick = false;
+let dragFrom = null, dragging = false, swallowClick = false, swiping = false;
+const SWIPE_PX = 55;        // past this, a horizontal drag is a page change
 
 function setTilt(rx, ry){
   scene.style.setProperty('--rx', rx.toFixed(2) + 'deg');
@@ -1352,12 +1592,26 @@ function tiltStart(e){
   if (idle) return;                       // the first touch is for waking up
   dragFrom = {x:e.clientX, y:e.clientY};
   dragging = false;
+  swiping = false;
 }
 
 function tiltMove(e){
   if (!dragFrom) return;
   const dx = e.clientX - dragFrom.x;
   const dy = e.clientY - dragFrom.y;
+
+  /* A decidedly sideways drag is a page change, not a lean. Requiring it to be 1.4 times
+     more horizontal than vertical is what stops a diagonal look-around from flipping the
+     page out from under you. Once it is a swipe it stays one for the rest of the gesture,
+     so the wall does not lurch between the two behaviours mid-drag. */
+  if (!swiping && Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 1.4){
+    swiping = true;
+    dragging = false;
+    scene.classList.remove('dragging');
+    setTilt(0, 0);
+  }
+  if (swiping) return;
+
   if (!dragging){
     if (Math.hypot(dx, dy) < DRAG_PX) return;
     dragging = true;
@@ -1369,10 +1623,15 @@ function tiltMove(e){
           clamp(dx / (innerWidth / 2) * MAX_TILT));
 }
 
-function tiltEnd(){
-  if (dragging) swallowClick = true;      // this gesture was a look, not a tap
+function tiltEnd(e){
+  if (swiping && dragFrom && e){
+    const dx = e.clientX - dragFrom.x;
+    setPage(page + (dx < 0 ? 1 : -1));
+  }
+  if (dragging || swiping) swallowClick = true;   // a look or a swipe, not a tap
   dragFrom = null;
   dragging = false;
+  swiping = false;
   scene.classList.remove('dragging');
   setTilt(0, 0);
 }
@@ -1465,6 +1724,7 @@ function openSettings(){
   if (idle){ idle = false; document.body.classList.remove('idle'); }
   $('#setColor').value = cfg.wall;
   $('#setColorVal').textContent = cfg.wall.toUpperCase();
+  $('#setBridge').value = cfg.bridge || '';
   $('#setDim').value = cfg.dim;
   $('#setDimVal').textContent = cfg.dim + '%';
   $('#setIdle').value = cfg.idleMin;
@@ -1511,6 +1771,11 @@ $('#setColor').addEventListener('input', e => {
   cfg.wall = e.target.value; applyCfg();
   $('#setColorVal').textContent = cfg.wall.toUpperCase();
   markSwatch();
+});
+$('#setBridge').addEventListener('change', e => {
+  cfg.bridge = e.target.value.trim();
+  saveCfg();
+  pingBridge();
 });
 $('#setDim').addEventListener('input', e => {
   cfg.dim = +e.target.value; applyCfg();
@@ -1599,6 +1864,7 @@ $('#setCache').addEventListener('click', () => {
 /* ====================== go ====================== */
 
 loadCfg();
+setPage(0);
 resetIdle();
 </script>
 </body>
