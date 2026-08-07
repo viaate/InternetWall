@@ -1,0 +1,71 @@
+{
+  "_comment": [
+    "Copy this to config.json and fill it in. Everything is optional: a device left",
+    "blank simply does not appear, and the room page carries on without it rather",
+    "than erroring. Fill it in as you pair each thing.",
+    "",
+    "Addresses: use fixed IPs, reserved in your router by MAC. A device that moves",
+    "to a new address on its own is a wall panel that stops working on a Tuesday for",
+    "no reason you can see."
+  ],
+
+  "allow_origins": [
+    "https://viaate.github.io"
+  ],
+  "_allow_origins": [
+    "Which pages may drive this. Echoed back rather than answering '*', because '*'",
+    "would let any page the iPad ever loads press buttons in your room. Add the",
+    "http://<mac-ip>:8000 origin too if you are testing with serve.py."
+  ],
+
+  "appletv": {
+    "address": "192.168.1.50",
+    "credentials": {
+      "Companion": "paste what atvremote pair prints",
+      "AirPlay": ""
+    },
+    "_note": "atvremote scan, then atvremote --id <id> --protocol companion pair"
+  },
+
+  "tv": {
+    "address": "192.168.1.51",
+    "token": "",
+    "_note": "Leave token empty. The TV shows an allow box on first contact and the token it returns is written back here automatically."
+  },
+
+  "pcs": {
+    "desktop": {
+      "mac": "AA:BB:CC:DD:EE:FF",
+      "broadcast": "192.168.1.255",
+      "hdmi": "hdmi2",
+      "_note": "hdmi is optional: set it and waking the PC also switches the TV to it. Yours is not on the TV, so leave it out unless that changes."
+    }
+  },
+
+  "sonos": {
+    "address": "192.168.1.52",
+    "_note": "Optional. SoCo discovers it on the LAN anyway; this only pins which one if you ever have two."
+  },
+
+  "dyson": {
+    "address": "192.168.1.53",
+    "serial": "XXX-XX-XXXXXXXX",
+    "credentials": "",
+    "_note": "Serial and wifi credentials are on the sticker on the machine itself."
+  },
+
+  "tuya": {
+    "ceiling": {
+      "id": "",
+      "key": "",
+      "address": "192.168.1.54",
+      "version": "3.3",
+      "_note": "id and key come from python3 -m tinytuya wizard. If commands time out, try version 3.4 or 3.5; the protocol version is per-firmware and guessing it is faster than finding out."
+    }
+  },
+
+  "wled": {
+    "address": "192.168.1.55",
+    "_note": "No credentials. WLED answers plain HTTP on the LAN, which is why the strip is the one device here that owes nobody an account."
+  }
+}
