@@ -1702,7 +1702,13 @@ function armLongPress(e){
   /* Only on bare wall, so it can never be reached by mashing a picture. #plane covers the
      whole panel above #wall, so in practice that is the usual target; #stage and #scene
      are here too because a tilt can put either of them under the finger. */
-  const bare = ['wall', 'plane', 'stage', 'scene', 'dim'].includes(e.target.id);
+  /* Adding the pager put #page-wall between the wall and the finger, so taps on bare
+     drywall started landing on an element that was not in this list and long-press broke
+     a second time. Matching by prefix as well means a new page cannot silently break it
+     again. */
+  const id = e.target.id || '';
+  const bare = ['wall', 'plane', 'stage', 'scene', 'dim'].includes(id) ||
+               id.startsWith('page-');
   if (!bare) return;
   pressFrom = {x: e.clientX, y: e.clientY};
   clearTimeout(pressTimer);

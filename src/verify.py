@@ -74,7 +74,20 @@ def main():
         notes.append(f"anchors with href: {anchors}")
 
         # --- settings via long press on bare wall ---------------------------
-        pg.mouse.move(600, 780)
+        # A point that is genuinely bare drywall. 600,780 used to be, then the wall was
+        # rescaled and a picture moved under it, so the press landed on artwork and
+        # correctly did nothing. Found at runtime now rather than hardcoded, so the next
+        # layout change cannot quietly turn this into a false failure.
+        bx, by = pg.evaluate('''() => {
+            for (const [x, y] of [[60, 60], [1120, 60], [600, 60], [60, 760]]) {
+                const e = document.elementFromPoint(x, y);
+                const id = e && e.id || '';
+                if (['wall','plane','stage','scene'].includes(id) || id.startsWith('page-'))
+                    return [x, y];
+            }
+            return [60, 60];
+        }''')
+        pg.mouse.move(bx, by)
         pg.mouse.down()
         pg.wait_for_timeout(1700)
         pg.mouse.up()
@@ -88,14 +101,16 @@ def main():
         # a swatch must actually repaint the wall
         before = pg.evaluate("() => getComputedStyle(document.documentElement)"
                              ".getPropertyValue('--wall').trim()")
-        pg.click(".sw:nth-child(7)")
+        # by coordinate: the swatch sits inside a panel that scales on press,
+        # so Playwright's stability check can loop forever on it
+        click_at(pg, "#swatches .sw:nth-of-type(7)")
         pg.wait_for_timeout(200)
         after = pg.evaluate("() => getComputedStyle(document.documentElement)"
                             ".getPropertyValue('--wall').trim()")
         if before == after:
             fails.append("wall colour swatch did not change --wall")
         notes.append(f"swatch changes wall: {before} -> {after}")
-        pg.click("#setDone")
+        click_at(pg, "#setDone")
         pg.wait_for_timeout(300)
 
         # settings must survive a reload, or calibration is pointless
@@ -160,7 +175,7 @@ def main():
         if "book" not in t.lower():
             fails.append(f"tapping a book on the right shelf opened {t!r}")
         notes.append(f"a book on the right shelf opens: {t!r}")
-        pg.click("#storyClose"); pg.wait_for_timeout(300)
+        click_at(pg, "#storyClose"); pg.wait_for_timeout(300)
 
         # --- the saga ---------------------------------------------------------
         pg.evaluate("() => { cfg.idleMin = 15; resetIdle(); }")
@@ -189,7 +204,12 @@ def main():
             .canPlayType('video/mp4; codecs="avc1.42E01E"') || 'unsupported' ''')
         notes.append(f"test browser H.264 support: {codec}")
 
-        pg.evaluate("() => document.querySelectorAll('.plate')[0].click()")
+        # Guarded: if the saga did not open, this used to die on undefined.click() with a
+        # message that said nothing about the actual cause.
+        opened = pg.evaluate("() => document.querySelectorAll('.plate').length")
+        if not opened:
+            fails.append("tapping the slab did not open the saga")
+        pg.evaluate("() => { const p=document.querySelectorAll('.plate'); if (p[0]) p[0].click(); }")
         pg.wait_for_timeout(900)
         pg.evaluate("() => { const p=document.querySelectorAll('.plate');"
                     " if (p.length) p[0].click(); }")
