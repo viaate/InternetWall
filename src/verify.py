@@ -36,6 +36,19 @@ def serve():
     return httpd, httpd.server_address[1]
 
 
+def click_at(pg, selector):
+    """Click an element by coordinate rather than by locator.
+
+    Playwright's normal click waits for the target to hold still, and .piece:active
+    scales the piece on press. Clicking a child of one therefore moves the child under
+    the cursor, the stability check fails, it retries, and it presses again forever.
+    The app is fine; the checker just needs to stop asking permission.
+    """
+    x, y = pg.evaluate("""(sel) => { const r = document.querySelector(sel).getBoundingClientRect();
+        return [r.x + r.width / 2, r.y + r.height / 2]; }""", selector)
+    pg.mouse.click(x, y)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     httpd, port = serve()
@@ -107,7 +120,7 @@ def main():
             notes.append("idle engages and fades to bare wall")
 
         # a wake tap must not also open a story
-        pg.mouse.click(183, 205)        # dead centre of the CarterPCs frame
+        pg.mouse.click(170, 228)        # dead centre of the CarterPCs frame
         pg.wait_for_timeout(400)
         if pg.evaluate("() => document.body.classList.contains('story-open')"):
             fails.append("the tap that wakes the wall also opened a story")
@@ -116,9 +129,44 @@ def main():
         if pg.evaluate("() => document.body.classList.contains('idle')"):
             fails.append("tap did not wake the wall")
 
+        # --- drag to look, which must not become a tap -------------------------
+        pg.mouse.move(590, 410)
+        pg.mouse.down()
+        for x, y in [(720, 440), (900, 490), (1010, 520)]:
+            pg.mouse.move(x, y)
+        pg.wait_for_timeout(120)
+        tilt = pg.evaluate("""() => {
+            const s = getComputedStyle(document.querySelector('#scene'));
+            return [parseFloat(s.getPropertyValue('--rx')), parseFloat(s.getPropertyValue('--ry'))];
+        }""")
+        if abs(tilt[1]) < 1:
+            fails.append(f"dragging did not tilt the scene: {tilt}")
+        notes.append(f"tilt while dragging: rx {tilt[0]:.1f} ry {tilt[1]:.1f}")
+        pg.mouse.up()
+        pg.wait_for_timeout(800)
+        rest = pg.evaluate("""() => parseFloat(getComputedStyle(document.querySelector('#scene'))
+            .getPropertyValue('--ry'))""")
+        if abs(rest) > 0.1:
+            fails.append(f"the scene did not spring back square: ry {rest}")
+        if pg.evaluate("() => document.body.classList.contains('story-open')"):
+            fails.append("a drag opened a story")
+        else:
+            notes.append("a drag springs back and opens nothing")
+
+        # --- the two hit targets on the right shelf ---------------------------
+        click_at(pg, "[data-key=booksR] .goods img")
+        pg.wait_for_timeout(450)
+        t = pg.eval_on_selector("#storyTitle", "e => e.textContent")
+        if "book" not in t.lower():
+            fails.append(f"tapping a book on the right shelf opened {t!r}")
+        notes.append(f"a book on the right shelf opens: {t!r}")
+        pg.click("#storyClose"); pg.wait_for_timeout(300)
+
         # --- the saga ---------------------------------------------------------
         pg.evaluate("() => { cfg.idleMin = 15; resetIdle(); }")
-        pg.click("[data-key=booksR]")
+        # The slab, not the shelf. Tapping the shelf now opens the books, which is the
+        # whole point of giving the slab its own hit target.
+        click_at(pg, "[data-key=booksR] img.front")
         pg.wait_for_timeout(600)
         plates = pg.evaluate("() => document.querySelectorAll('.plate').length")
         notes.append(f"saga chapters with a play plate: {plates}")

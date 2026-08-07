@@ -78,8 +78,34 @@ button{font:inherit;color:inherit;margin:0}
 
 /* ============================ the wall ============================ */
 
-#wall{
+/* ---------------- the room, and looking around it ----------------
+   Drag and the camera shifts a little, the way it would if you leaned. The pieces stand
+   proud of the wall on the z axis, so they slide against it rather than with it, which
+   is the whole effect: parallax is what makes a flat panel read as depth.
+
+   Depth is exaggerated. A frame really sits about an inch off a wall, which at this scale
+   is under two points of travel at the angles used here, and invisible. Roughly four
+   times life size is still small enough to look like a picture hanging on a wall and
+   large enough to actually see.
+
+   Only transform is animated, and only on one element, which is what keeps this cheap
+   enough for the A14. */
+#stage{
   position:fixed; inset:0;
+  perspective:1500px;
+  perspective-origin:calc(50% + var(--px, 0px)) calc(50% + var(--py, 0px));
+}
+#scene{
+  position:absolute; inset:0;
+  transform-style:preserve-3d;
+  transform:rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition:transform .55s var(--ease);
+}
+#scene.dragging{transition:none; will-change:transform}
+
+#wall{
+  /* Oversized, so tilting never swings a bare edge into shot. */
+  position:absolute; inset:-8%;
   background-color:var(--wall);
   /* One baked tile. An feTurbulence filter here would be re-evaluated on every
      repaint of this layer, which on the A14 is a real cost for something that
@@ -98,22 +124,25 @@ button{font:inherit;color:inherit;margin:0}
     radial-gradient(95% 70% at 88% 96%, rgba(0,0,0,.06), transparent 60%);
 }
 
-#plane{position:fixed; inset:0}
+#plane{position:absolute; inset:0; transform-style:preserve-3d}
 
 .piece{
   position:absolute;
   left:var(--x); width:var(--w);
   transition:transform .28s var(--ease), opacity .7s var(--ease);
-  transform:translateZ(0);
+  transform:translateZ(var(--z, 1.4vw));
 }
 /* Frames are placed by their top edge. Ledges are placed by their bottom edge, so
    the shelf line stays exactly where it was drilled no matter how tall whatever is
    standing on it turns out to be. Swapping a placeholder for a real photo of the
    loaded shelf then cannot move the shelf. */
+/* A piece sets exactly one of --y or --b. Anything hung from the ceiling line uses --y;
+   anything standing on, or lining up with, the shelf line uses --b, so the two stay
+   locked together no matter what is on the shelf. */
 .piece.frame,
-.piece.photo{top:var(--y)}
+.piece.photo{top:var(--y, auto); bottom:var(--b, auto)}
 .piece.ledge{bottom:var(--b)}
-.piece:active{transform:scale(.985)}
+.piece:active{transform:translateZ(var(--z, 1.4vw)) scale(.985)}
 
 /* ---------------- a framed picture, drawn rather than photographed ----------------
    Moulding, mat, and a recessed opening. The whole illusion is three things:
@@ -133,7 +162,7 @@ button{font:inherit;color:inherit;margin:0}
     0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
 }
 .mat{
-  padding:var(--mat, 10%);
+  padding:var(--matV, 10%) var(--matH, 10%);
   background:linear-gradient(162deg,#fdfdfa 0%,#f7f5ee 60%,#f1efe6 100%);
   box-shadow:inset 0 .18vw .34vw rgba(0,0,0,.16);
 }
@@ -172,14 +201,16 @@ button{font:inherit;color:inherit;margin:0}
   inset 0 -.06vw .1vw rgba(255,255,255,.3)}
 
 /* ---------------- picture ledge ---------------- */
-.ledge{--shelfh:1.5vw}
+.ledge{--shelfh:1.53vw; --z:2.6vw}   /* an ~1.1in ledge lip at WALL_IN=72 */
 .ledge .goods{
   display:flex; align-items:flex-end; justify-content:center;
-  gap:.45vw; padding:0 .8vw;
+  gap:.3vw; padding:0 .5vw;
   min-height:6vw;
 }
-/* Never let the row grow wider than the shelf it is standing on. */
-.ledge .goods img{min-width:0}
+/* Books keep their true size and lean on each other if the shelf is too short for them,
+   which is what happens on a real ledge. Shrinking them to fit would have quietly broken
+   the scale that the rest of this layout depends on. */
+.ledge .goods img{flex:0 0 auto; margin-inline:calc(var(--squeeze, 0px) / -2)}
 .ledge .goods img{
   height:var(--goods-h, 11vw); width:auto; max-width:none;
   align-self:flex-end;
@@ -195,12 +226,12 @@ button{font:inherit;color:inherit;margin:0}
    left it looking like a small book rather than a cased card. */
 .ledge .goods img.front{
   position:absolute; left:50%; bottom:0; transform:translateX(-50%);
-  height:calc(var(--goods-h, 11vw) * .53); z-index:2;
+  height:var(--front-h, 6vw); z-index:2;
   box-shadow:0 .1vw .18vw rgba(30,36,30,.45), .1vw .4vw .8vw rgba(30,36,30,.34);
 }
 .ledge .goods .frontTodo{
   position:absolute; left:50%; bottom:0; transform:translateX(-50%); z-index:2;
-  height:calc(var(--goods-h, 11vw) * .53); aspect-ratio:.61;
+  height:var(--front-h, 6vw); aspect-ratio:.61;
   border:.2vw dashed rgba(60,66,58,.62); background:rgba(250,250,247,.94);
   display:flex; align-items:center; justify-content:center;
   font:700 clamp(8px,.72vw,12px)/1 Helvetica,Arial,sans-serif;
@@ -482,8 +513,10 @@ body.idle #wall::after{opacity:.5}
 </head>
 <body>
 
-<div id="wall"></div>
-<div id="plane"></div>
+<div id="stage"><div id="scene">
+  <div id="wall"></div>
+  <div id="plane"></div>
+</div></div>
 
 <div id="story" aria-hidden="true">
   <div id="storyTop">
@@ -544,11 +577,33 @@ body.idle #wall::after{opacity:.5}
    When the real hang is measured, this array is the only thing to edit.
    ====================================================================== */
 
+/* Everything below is in INCHES, not percentages, and that is the point.
+
+   Sizing by eye is how the frames ended up about a third too large next to the shelves:
+   a 14in picture and a 22in shelf were both just "some percentage of the panel", so
+   there was nothing to check either against. Give a piece its real width and it lands at
+   the right size relative to every other piece for free.
+
+   WALL_IN is how much real wall the iPad is pretending to be. Raise it and everything
+   shrinks together; the arrangement never distorts. */
+/* 64in, not 72. At 72 everything was true to each other but the whole arrangement sat
+   small in the panel, and the books and the slab were the pieces that suffered: a 6.7in
+   book next to a 17in sign has nowhere to go once the sign is already small. Showing
+   less wall keeps every ratio identical and makes the physical objects bigger on screen.
+   The floor of this is row two: two 21.65in ledges and a 17in sign cannot occupy less
+   than 60.3in, so 64 is close to as tight as the real furniture allows. */
+const WALL_IN = 64;
+/* vw rather than %, and for every axis. A percentage is of the panel's width for x but
+   of its height for y, so the two axes would run at different scales and a 9in book and a
+   9in gap would not be the same size. vw is one physical scale for both. */
+const vw = inches => (inches * 100 / WALL_IN).toFixed(4) + 'vw';
+
 const PIECES = [
   {
     key:'carter', type:'frame',
-    x:'3.5%', y:'13.7%', w:'24%',
-    art:'art/carter.jpg', ratio:1.25, mould:'5.2%', mat:'11%',
+    xIn:1.5, yIn:6, wIn:15.5,
+    art:'art/carter.jpg', ratio:1.25,
+    mould:'5.2%', matV:'10.4%', matH:'14%',
     stamp:'june 2024',
     title:'I turned up at CarterPCs’ house',
     facts:'20 June 2024 &nbsp;·&nbsp; his driveway',
@@ -570,8 +625,8 @@ const PIECES = [
   },
   {
     key:'cards', type:'photo',
-    x:'32%', y:'20.5%', w:'19%',
-    art:'art/cards.jpg', ratio:1.77,
+    xIn:19.63, yIn:8.5, wIn:13.5,
+    art:'art/cards.jpg', ratio:1.79,
     stamp:'the jack pack',
     title:'Three cards, all three signed',
     facts:'a three-opening frame, and he put a pen on every one',
@@ -587,8 +642,8 @@ const PIECES = [
   },
   {
     key:'shrek', type:'frame', deep:true,
-    x:'55.5%', y:'17.8%', w:'12.5%',
-    art:'art/shrek.jpg', ratio:0.8, mould:'5.4%', mat:'6.5%',
+    xIn:35.76, yIn:7.15, wIn:8.6,
+    art:'art/shrek.jpg', ratio:0.8, mould:'6.5%', matV:'7%', matH:'7%',
     stamp:'the photo booth',
     title:'Shrek’s Adventure, London',
     facts:'8:06 into the London video',
@@ -605,8 +660,9 @@ const PIECES = [
   },
   {
     key:'jen', type:'frame',
-    x:'72.5%', y:'13.7%', w:'24%',
-    art:'art/jen.jpg', ratio:1.25, mould:'5.2%', mat:'11%',
+    xIn:46.99, yIn:6, wIn:15.5,
+    art:'art/jen.jpg', ratio:1.25,
+    mould:'5.2%', matV:'10.4%', matH:'14%',
     stamp:'golden, colorado',
     title:'Outside GamingWithJen’s house',
     facts:'Golden, Colorado',
@@ -619,8 +675,7 @@ const PIECES = [
   },
   {
     key:'booksL', type:'ledge',
-    x:'2.5%', b:'14.3%', w:'28%',
-    goodsH:'10.4vw',
+    xIn:0.6, bIn:6.3, wIn:21.65, bookIn:8.7,
     goods:['art/books/02-enter-the-mine.jpg',
            {src:'art/books/06-activity-book.jpg', scale:7.4/8.7},
            'art/books/05-end-of-all-things.jpg'],
@@ -645,7 +700,7 @@ const PIECES = [
   },
   {
     key:'luton', type:'photo',
-    x:'35%', y:'53.3%', w:'30%',
+    xIn:23.5, bIn:6.3, wIn:17,
     art:'art/luton.jpg', ratio:1.39,
     stamp:'a piece of the tarp',
     title:'Welcome to Luton',
@@ -664,13 +719,21 @@ const PIECES = [
     ]
   },
   {
-    key:'booksR', type:'ledge', slab:true,
-    x:'69.5%', b:'14.3%', w:'28%',
-    goodsH:'10.4vw',
+    key:'booksR', type:'ledge',
+    xIn:41.75, bIn:6.3, wIn:21.65, bookIn:8.7,
     goods:['art/books/01-hole-new-world.jpg',
            'art/books/04-into-the-overworld.jpg',
            'art/books/03-zombies-day-off.jpg'],
-    front:'art/slab.png',
+    front:'art/slab.png', frontIn:4.62, frontStory:'slab',
+    /* Tapping a book here opens the books, not the saga. Before this the whole shelf
+       opened the saga, so anybody reaching for a PopularMMOs cover got eleven chapters
+       about a trading card instead. The slab is its own target now. */
+    storyOf:'booksL'
+  },
+  {
+    /* Not hung on the wall: the slab standing on the shelf above is its hit target.
+       `virtual` keeps it out of the render but leaves it addressable by key. */
+    key:'slab', virtual:true,
     stamp:'the slab',
     title:'The thing in front of the books',
     facts:'homemade &nbsp;·&nbsp; grade invented &nbsp;·&nbsp; signature real',
@@ -860,15 +923,18 @@ function todoNode(ratio, label){
 
 function buildPiece(p){
   const node = el('div', 'piece ' + p.type + (p.deep ? ' deep' : ''));
-  node.style.setProperty('--x', p.x);
-  node.style.setProperty('--w', p.w);
-  if (p.y) node.style.setProperty('--y', p.y);
-  if (p.b) node.style.setProperty('--b', p.b);
+  node.style.setProperty('--x', vw(p.xIn));
+  node.style.setProperty('--w', vw(p.wIn));
+  if (p.yIn != null) node.style.setProperty('--y', vw(p.yIn));
+  if (p.bIn != null) node.style.setProperty('--b', vw(p.bIn));
   node.dataset.key = p.key;
 
   if (p.type === 'frame'){
     if (p.mould) node.style.setProperty('--mould', p.mould);
-    if (p.mat) node.style.setProperty('--mat', p.mat);
+    /* Mat borders are wider on the long sides than the short ones, so the two are set
+       separately. Uniform padding made the 11x14 frames an inch too tall. */
+    if (p.matV) node.style.setProperty('--matV', p.matV);
+    if (p.matH) node.style.setProperty('--matH', p.matH);
     const mould = el('div', 'moulding');
     const mat = el('div', 'mat');
     mat.appendChild(artNode(p.art, p.ratio, p.title));
@@ -885,7 +951,8 @@ function buildPiece(p){
     node.appendChild(img);
 
   } else {
-    if (p.goodsH) node.style.setProperty('--goods-h', p.goodsH);
+    if (p.bookIn) node.style.setProperty('--goods-h', vw(p.bookIn));
+    if (p.frontIn) node.style.setProperty('--front-h', vw(p.frontIn));
     const goods = el('div', 'goods');
 
     (p.goods || []).forEach(item => {
@@ -907,7 +974,14 @@ function buildPiece(p){
     if (p.front){
       const f = el('img', 'front');
       f.src = p.front;
-      f.alt = '';
+      f.alt = p.frontStory ? 'The slab' : '';
+      if (p.frontStory){
+        f.style.cursor = 'pointer';
+        f.addEventListener('click', e => {
+          e.stopPropagation();       // or the shelf underneath opens as well
+          openStory(p.frontStory);
+        });
+      }
       /* This one does get a marker when it is missing, because it is the slab and the whole
          point of that shelf, and it should not be quietly forgotten. */
       f.addEventListener('error', () => f.replaceWith(el('div', 'frontTodo', 'slab')));
@@ -932,7 +1006,7 @@ function buildPiece(p){
   return node;
 }
 
-PIECES.forEach(p => plane.appendChild(buildPiece(p)));
+PIECES.filter(p => !p.virtual).forEach(p => plane.appendChild(buildPiece(p)));
 
 /* ====================== the story panel ====================== */
 
@@ -957,8 +1031,9 @@ function killVideo(){
 }
 
 function openStory(key){
-  const p = byKey(key);
+  let p = byKey(key);
   if (!p) return;
+  if (p.storyOf) p = byKey(p.storyOf) || p;
 
   $('#storyStamp').textContent = p.stamp || '';
   $('#storyTitle').textContent = p.title || '';
@@ -1228,6 +1303,79 @@ function scoreboard(){
   });
   return sec;
 }
+
+/* ====================== looking around ======================
+   Drag anywhere on the wall and the camera leans. It springs back on release, because
+   this is a wall, not a viewer: it should always settle to square-on so it goes back to
+   pretending it is not a screen.
+
+   The threshold is what keeps this from breaking tapping. Without it every tap would
+   land as a one-pixel drag and then fire a story on release, or worse, a story would
+   open at the end of a deliberate drag. Past 10px it is a drag and the click that
+   follows is swallowed. */
+
+const scene = $('#scene');
+const stage = $('#stage');
+const MAX_TILT = 7;          // degrees. More than this and the illusion breaks down.
+const DRAG_PX = 10;
+
+let dragFrom = null, dragging = false, swallowClick = false;
+
+function setTilt(rx, ry){
+  scene.style.setProperty('--rx', rx.toFixed(2) + 'deg');
+  scene.style.setProperty('--ry', ry.toFixed(2) + 'deg');
+  /* Moving the vanishing point as well as rotating is what sells it as the viewer
+     moving rather than the wall spinning on a spindle. */
+  stage.style.setProperty('--px', (-ry * 5).toFixed(1) + 'px');
+  stage.style.setProperty('--py', (rx * 5).toFixed(1) + 'px');
+}
+
+function tiltStart(e){
+  /* Clear it here rather than trusting the click to arrive. A drag that ends off-screen,
+     or on an element that never emits a click, would otherwise leave the flag armed and
+     silently eat whichever real tap came next. A new gesture always starts clean. */
+  swallowClick = false;
+  if (document.body.classList.contains('story-open')) return;
+  if (idle) return;                       // the first touch is for waking up
+  dragFrom = {x:e.clientX, y:e.clientY};
+  dragging = false;
+}
+
+function tiltMove(e){
+  if (!dragFrom) return;
+  const dx = e.clientX - dragFrom.x;
+  const dy = e.clientY - dragFrom.y;
+  if (!dragging){
+    if (Math.hypot(dx, dy) < DRAG_PX) return;
+    dragging = true;
+    scene.classList.add('dragging');
+  }
+  const clamp = v => Math.max(-MAX_TILT, Math.min(MAX_TILT, v));
+  /* Divisors are half the panel, so a drag from the middle to an edge reaches full tilt. */
+  setTilt(clamp(dy / (innerHeight / 2) * -MAX_TILT),
+          clamp(dx / (innerWidth / 2) * MAX_TILT));
+}
+
+function tiltEnd(){
+  if (dragging) swallowClick = true;      // this gesture was a look, not a tap
+  dragFrom = null;
+  dragging = false;
+  scene.classList.remove('dragging');
+  setTilt(0, 0);
+}
+
+stage.addEventListener('pointerdown', tiltStart);
+addEventListener('pointermove', tiltMove, {passive:true});
+addEventListener('pointerup', tiltEnd);
+addEventListener('pointercancel', tiltEnd);
+
+/* Capture, so it is stopped before it reaches whichever piece is underneath. */
+addEventListener('click', e => {
+  if (!swallowClick) return;
+  swallowClick = false;
+  e.stopPropagation();
+  e.preventDefault();
+}, true);
 
 /* ====================== idle ====================== */
 

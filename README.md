@@ -24,6 +24,22 @@ app is `index.html` plus `art/` and `slab/`.
 
 ---
 
+## Looking at it right now
+
+On the machine with this repo:
+
+```
+python3 serve.py
+```
+
+It prints two addresses. Open the second one on the iPad, on the same wifi. That is the
+whole thing.
+
+That is plain `http://`, so iOS will not register the service worker and it will not work
+with the serving machine switched off. Fine for trying it. For the real install, read on.
+
+---
+
 ## Getting it onto the iPad
 
 The app being self-contained is not the same as it working with the wifi off. Without
@@ -76,16 +92,54 @@ whatever you calibrated, by itself, at dusk.
 
 ## Moving things around
 
-`PIECES` at the top of the script in `index.html` is the only thing to edit.
+`PIECES` at the top of the script in `index.html` is the only thing to edit, and
+**everything in it is in inches.**
 
 ```js
-{ key:'carter', type:'frame', x:'3.5%', y:'10.2%', w:'24%',
-  art:'art/carter.jpg', ratio:1.25, mould:'5.2%', mat:'11%', … }
+{ key:'carter', type:'frame', xIn:1.5, yIn:6, wIn:15.5,
+  art:'art/carter.jpg', ratio:1.25, mould:'5.2%', matV:'10.4%', matH:'14%', … }
 ```
 
-`x` / `y` / `w` are percentages of the panel. **Height is never given.** It falls out
-of `ratio` (the artwork's own aspect) plus the mat and moulding widths, so a frame
-cannot be set to the wrong shape by hand.
+That matters more than it sounds. When these were percentages, a 14in picture and a 22in
+shelf were both just "some fraction of the panel", so there was nothing to check either
+against, and the frames ended up about a third too large next to the books. Give a piece
+its real width and it lands correctly against every other piece for free.
+
+`WALL_IN` is how much real wall the panel pretends to be, currently **64in**. Raise it
+and everything shrinks together without distorting. It cannot go much below 64: row two
+is two 21.65in ledges plus a 17in sign, which is 60.3in of furniture before any gaps.
+
+Positions are inches too, converted to `vw` for both axes rather than percentages,
+because a percentage is of the panel's width horizontally and its height vertically, so
+a 9in book and a 9in gap would not come out the same size.
+
+**Height is never given.** It falls out of `ratio` (the artwork's own aspect) plus the
+mat and moulding widths, so a frame cannot be set to the wrong shape by hand. Mat borders
+are set separately for the long and short sides (`matV` / `matH`), because they really
+are different: 2in against 1.5in on an 11x14, and uniform padding made the frames an inch
+too tall.
+
+Real sizes currently encoded: 11x14 frames with an 8x10 opening at 15.5 x 12.5in outer,
+IKEA MOSSLANDA ledges at 21.65in, the graphic novels at 6.7 x 8.7in, the activity book at
+the smaller 5.4 x 7.4in trim, and the slab at 4.62in tall. Correct any of these and
+everything else stays in proportion around it.
+
+---
+
+## Leaning
+
+Drag the wall and the camera leans, up to 7 degrees, then springs back square on release.
+The pieces sit proud of the wall on the z axis so they slide against it rather than with
+it, which is what makes a flat panel read as having depth.
+
+Depth is exaggerated about four times. A frame really stands an inch off a wall, which at
+this scale is under two points of travel at these angles, i.e. invisible.
+
+A drag is not a tap. Past 10px of movement the gesture becomes a look and the click that
+follows it is swallowed, so a deliberate drag never opens a story. The flag that does the
+swallowing is cleared when a *new* gesture starts rather than when the click arrives: a
+drag ending off-screen emits no click at all, and the flag would otherwise stay armed and
+eat whichever real tap came next.
 
 Frames are placed by their **top** edge (`y`). Ledges are placed by their **bottom**
 edge (`b`), so the shelf line stays where it was drilled no matter how tall whatever is
@@ -154,7 +208,9 @@ Two details that matter:
 
 | | |
 |---|---|
+| `python3 serve.py` | serve it to the iPad over wifi |
 | `python3 src/build-assets.py` | rebuild every image in `art/` and every QR code |
+| `python3 src/make-slab.py` | rebuild the slab composite |
 | `python3 src/verify.py [outdir]` | drives settings, idle, the saga, the no-navigation and no-fetch rules |
 | `python3 src/shoot.py page index.html out.png` | screenshot at iPad Air 4 landscape |
 | `python3 src/make-wall-texture.py` | rebuild the drywall tile |
