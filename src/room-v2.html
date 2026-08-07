@@ -136,6 +136,148 @@ button{font:inherit;color:inherit;margin:0}
 .page.here{visibility:visible}
 #plane{position:absolute; inset:0; transform-style:preserve-3d}
 
+.piece{
+  position:absolute;
+  left:var(--x); width:var(--w);
+  transition:transform .28s var(--ease), opacity .7s var(--ease);
+  transform:translateZ(var(--z, 1.4vw));
+}
+/* Frames are placed by their top edge. Ledges are placed by their bottom edge, so
+   the shelf line stays exactly where it was drilled no matter how tall whatever is
+   standing on it turns out to be. Swapping a placeholder for a real photo of the
+   loaded shelf then cannot move the shelf. */
+/* A piece sets exactly one of --y or --b. Anything hung from the ceiling line uses --y;
+   anything standing on, or lining up with, the shelf line uses --b, so the two stay
+   locked together no matter what is on the shelf. */
+.piece.frame,
+.piece.photo{top:var(--y, auto); bottom:var(--b, auto)}
+.piece.ledge{bottom:var(--b)}
+.piece:active{transform:translateZ(var(--z, 1.4vw)) scale(.985)}
+
+/* ---------------- a framed picture, drawn rather than photographed ----------------
+   Moulding, mat, and a recessed opening. The whole illusion is three things:
+   the mat is lighter than the moulding, the moulding casts a hard little shadow
+   down onto the mat, and the print sits below the mat rather than on it. */
+.moulding{
+  padding:var(--mould, 5.4%);
+  border-radius:1.5px;
+  background:linear-gradient(157deg,#fff 0%,#faf9f5 34%,#efede5 72%,#e7e4da 100%);
+  box-shadow:
+    0 0 0 1px rgba(96,94,84,.34),
+    inset 0 1.5px 0 rgba(255,255,255,.98),
+    inset 0 -1.5px 0 rgba(0,0,0,.11),
+    inset 1.5px 0 0 rgba(255,255,255,.55),
+    inset -1.5px 0 0 rgba(0,0,0,.07),
+    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
+    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
+}
+.mat{
+  padding:var(--matV, 10%) var(--matH, 10%);
+  background:linear-gradient(162deg,#fdfdfa 0%,#f7f5ee 60%,#f1efe6 100%);
+  box-shadow:inset 0 .18vw .34vw rgba(0,0,0,.16);
+}
+.opening{
+  position:relative;
+  aspect-ratio:var(--ratio, 1.25);
+  overflow:hidden;
+  background:#ddd;
+  /* the cut edge of the mat board, lit from above */
+  box-shadow:
+    0 0 0 1px rgba(140,134,118,.55),
+    inset 0 .22vw .42vw rgba(0,0,0,.42),
+    inset 0 -.06vw .1vw rgba(255,255,255,.35);
+}
+.opening img{width:100%;height:100%;object-fit:cover}
+
+/* Deep box frame for the card frame and the Shrek print: shallow mat, print sits
+   further back, so the moulding is thinner and the opening shadow is stronger.
+   Named .deep and not .box on purpose, because .box is the story panel's callout and
+   when this was called .box the card frame inherited a 3px black border and a
+   pink drop shadow from it. */
+.piece.deep .mat{background:linear-gradient(160deg,#fcfcf9,#f2f0e8)}
+/* Some pieces are photographs of the real frame, so they are shown whole and get only
+   the wall shadow. Drawing a moulding around a photographed moulding reads as two
+   frames, which is worse than either on its own. */
+.piece.photo img{
+  width:100%; height:auto; border-radius:1.5px;
+  box-shadow:
+    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
+    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
+}
+
+.piece.deep .opening{box-shadow:
+  0 0 0 1px rgba(140,134,118,.55),
+  inset 0 .3vw .55vw rgba(0,0,0,.5),
+  inset 0 -.06vw .1vw rgba(255,255,255,.3)}
+
+/* ---------------- picture ledge ---------------- */
+.ledge{--shelfh:1.53vw; --z:2.6vw}   /* an ~1.1in ledge lip at WALL_IN=72 */
+.ledge .goods{
+  display:flex; align-items:flex-end; justify-content:center;
+  gap:.3vw; padding:0 .5vw;
+  min-height:6vw;
+}
+/* Books keep their true size and lean on each other if the shelf is too short for them,
+   which is what happens on a real ledge. Shrinking them to fit would have quietly broken
+   the scale that the rest of this layout depends on. */
+.ledge .goods img{flex:0 0 auto; margin-inline:calc(var(--squeeze, 0px) / -2)}
+.ledge .goods img{
+  height:var(--goods-h, 11vw); width:auto; max-width:none;
+  align-self:flex-end;
+  /* Standing on a shelf, lit from above: a tight contact shadow where the book meets
+     the ledge, and a longer one falling back onto the wall behind. */
+  box-shadow:
+    0 .12vw .2vw rgba(30,36,30,.4),
+    .12vw .5vw .9vw rgba(30,36,30,.3);
+}
+.ledge .goods{position:relative}
+/* The slab is 4.62in tall against an 8.7in book, so it stands at 0.53 of the shelf's
+   book height. It was eyeballed at .66 first, which made it taller than a real slab and
+   left it looking like a small book rather than a cased card. */
+.ledge .goods img.front{
+  position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+  height:var(--front-h, 6vw); z-index:2;
+  box-shadow:0 .1vw .18vw rgba(30,36,30,.45), .1vw .4vw .8vw rgba(30,36,30,.34);
+}
+.ledge .goods .frontTodo{
+  position:absolute; left:50%; bottom:0; transform:translateX(-50%); z-index:2;
+  height:var(--front-h, 6vw); aspect-ratio:.61;
+  border:.2vw dashed rgba(60,66,58,.62); background:rgba(250,250,247,.94);
+  display:flex; align-items:center; justify-content:center;
+  font:700 clamp(8px,.72vw,12px)/1 Helvetica,Arial,sans-serif;
+  color:rgba(38,44,38,.66); letter-spacing:.04em; text-transform:uppercase;
+}
+.ledge .shelf img{width:100%; height:100%; object-fit:fill; border-radius:0}
+.ledge .shelf.hasphoto{background:none; box-shadow:
+  0 var(--lift) calc(var(--lift)*1.6) rgba(42,48,42,.24),
+  0 var(--cast) calc(var(--cast)*1.9) rgba(42,48,42,.24)}
+.ledge .shelf{
+  height:var(--shelfh);
+  border-radius:0 0 2px 2px;
+  background:linear-gradient(#fdfdfb 0 38%, #f2f1eb 38% 70%, #e6e4dc 100%);
+  box-shadow:
+    0 0 0 1px rgba(96,94,84,.3),
+    inset 0 1px 0 rgba(255,255,255,.95),
+    0 var(--lift) calc(var(--lift)*1.6) rgba(42,48,42,.24),
+    0 var(--cast) calc(var(--cast)*1.9) rgba(42,48,42,.24);
+}
+
+/* Stand-in for an artifact whose photograph has not been taken yet. Deliberately
+   plain and obviously provisional: a bad fake is worse than an honest gap, and
+   this way nothing on the wall is ever pretending to be something it is not. */
+.todo{
+  aspect-ratio:var(--ratio, 1.25);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:.35em; text-align:center; padding:.6em;
+  border:.22vw dashed rgba(60,66,58,.42);
+  border-radius:2px;
+  background:rgba(255,255,255,.30);
+  color:rgba(38,44,38,.66);
+}
+.todo b{font:700 clamp(9px,.86vw,15px)/1.2 Helvetica,Arial,sans-serif;letter-spacing:.02em}
+.todo span{font:400 clamp(8px,.7vw,12px)/1.25 Helvetica,Arial,sans-serif;opacity:.8}
+.ledge .todo{width:100%}
+
 #dots{
   position:fixed; left:50%; bottom:1.1vw; transform:translateX(-50%);
   z-index:30; display:flex; gap:.6vw;
@@ -149,263 +291,343 @@ button{font:inherit;color:inherit;margin:0}
 body.idle #dots{opacity:0; visibility:hidden; transition:opacity .8s, visibility 0s .8s}
 
 /* ---------------- the room ----------------
-   The wall stays. What changed is the material. The old panel was frosted white on a
-   grey-green wall, which is two greys touching: nothing had an edge and nothing had
-   weight, so it read as a template. These are objects instead. One porcelain face, warm
-   enough to separate from the cool drywall, a crisp keyline, a hard contact shadow and a
-   soft ambient one under it. That is what makes a light control look machined rather
-   than drawn.
+   This page hangs on the same drywall as page one, so it is built out of page one's
+   vocabulary rather than a dashboard's: warm white parts, corners that are barely
+   rounded, and the same two-stop wall shadow (--lift tight, --cast long) that every
+   frame and ledge over there already uses. The earlier version was a grid of
+   identically rounded, identically blurred rectangles, which is what made it read as
+   generated. Real things do not share a radius.
 
-   Colour is state and nothing else. Off is porcelain, on is the device's own colour
-   filling the whole object, so what is running is legible from the doorway without
-   touching anything. No decoration is tinted, because then a tint would stop meaning
-   something is on.
+   Two classes of object, and only two, because there are only two kinds of thing here:
 
-   The right third used to be empty. It is now a single tall slab: cover art when the TV
-   is playing, a large clock when it is not, which is what a wall panel is doing for
-   twenty three hours of the day. */
+     STATE PLATES  what is on. Flat, matte, 2px corners, screwed flat to the wall.
+                   Selecting is not pressing, so they are not shaped like buttons, and
+                   the two inputs share one plate divided by a seam because they are one
+                   mutually exclusive choice, not two independent switches.
+
+     THE FACEPLATE what you press. A moulded part with two routed wells; the keys stand
+                   proud inside them. Keys get a chunky 11px radius because a moulded
+                   key is chunky, and only tight shadows, because a key sits a
+                   millimetre off its well and cannot cast the long shadow a plate on
+                   a wall does.
+
+   Rim, well, key is deliberately the same three-layer trick as the wall's moulding,
+   mat and opening. It is the only reason a white part on a white part reads as depth.
+
+   Nothing on the right is in a box. Cover art is hung on the drywall exactly as a
+   photograph is on page one, and its title sits on the wall under it. A rounded panel
+   containing a rounded artwork frame was the most template-looking thing on the page.
+
+   Colour means one thing: this is on. Nothing decorative is tinted, or a tint would
+   stop carrying information. */
 
 .roomwrap{
   position:absolute; inset:0;
-  padding:2.9vw 3.4vw 3.7vw;
-  display:grid; grid-template-columns:47.7vw minmax(0,1fr); column-gap:3.4vw;
+  /* Deeper at the foot than the head. A panel hung at eye level is read from slightly
+     below, and equal margins all round then look bottom-light. Picture framers cut the
+     bottom of a mat wider for the same reason. */
+  padding:3.1vw 3.2vw 4.1vw 3.5vw;
+  display:grid; grid-template-columns:52.4vw minmax(0,1fr); column-gap:3.4vw;
   align-items:stretch;
   font-family:system-ui, -apple-system, "SF Pro Display", Helvetica, Arial, sans-serif;
   color:var(--ri);
 
-  /* Named apart from the global --ink so nothing on page one can be reached by these. */
-  --ri:#141a1b;
-  --ri2:rgba(20,26,27,.60);
-  --ri3:rgba(20,26,27,.46);
-  --hair:rgba(20,26,27,.15);
+  /* Named apart from the global --ink so nothing on page one can be reached by these,
+     and every class in here is rm- prefixed for the same reason: the wall, the story
+     panel and the settings sheet already own .row, .shelf, .plate, .track and .lab. */
+  --ri:#1a2021;
+  --ri2:rgba(26,32,33,.62);
+  --ri3:rgba(26,32,33,.45);
 
-  /* Every control key in here is exactly --key square. There is no second size. */
-  --key:6.9vw;
-  --kgap:.75vw;
+  /* Every control key is exactly --key square. There is no second key size. */
+  --key:7.7vw;
+  --kgap:.62vw;
 
-  --face:linear-gradient(180deg,#fdfcf9 0%,#f5f3ed 56%,#eae7de 100%);
-  /* Three inset lines, not one border: a lit top edge, a hairline all round, a shaded
-     bottom lip. Together they read as a moulded part catching the room light. */
-  --edge:
-    inset 0 1px 0 rgba(255,255,255,.95),
-    inset 0 0 0 1px rgba(20,26,27,.07),
-    inset 0 -1px 0 rgba(20,26,27,.13);
-  /* Contact shadow first, then two wider ones. A single soft blur floats; the tight
-     one is what pins the object to the wall. */
-  --drop:
-    0 1px 1.5px rgba(24,32,28,.15),
-    0 4px 9px -3px rgba(24,32,28,.18),
-    0 16px 26px -12px rgba(24,32,28,.28);
-  --drop-lit:
-    0 1px 1.5px rgba(24,32,28,.24),
-    0 6px 13px -4px rgba(24,32,28,.30),
-    0 22px 34px -14px rgba(24,32,28,.40);
+  /* The same warm white as the frames on page one, so the two pages are lit by the
+     same room rather than by two different art directors. */
+  --plate:#f7f5ef;
+  /* Three tones, deliberately: the state plates are the brightest thing on the wall,
+     the faceplate sits back a step, and the keys come forward off it again. A key the
+     same white as the body it is set in has no depth at all. */
+  --face:linear-gradient(180deg,#efece3 0%,#e8e5da 62%,#e0dcd0 100%);
+  --keyface:linear-gradient(180deg,#fdfcf8 0%,#f5f3eb 100%);
+
+  /* Wall shadow, reused verbatim from the frames. An object screwed to this wall casts
+     what the frames beside it cast. */
+  --wallcast:
+    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
+    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
 }
 
-.roomL{display:flex; flex-direction:column; gap:2.5vw; min-width:0; min-height:0}
+.rm-left{display:flex; flex-direction:column; min-width:0; min-height:0}
 
-.roomhead{display:flex; flex-direction:column; align-items:flex-start; gap:.75vw; flex:0 0 auto}
-.roomhead h2{margin:0; font-weight:700; font-size:3.5vw; line-height:1.05; letter-spacing:-.038em; color:var(--ri)}
-
-/* Not a pill with a dot. A tracked caption with a coloured rule in front of it, which
-   carries the same information and does not look like every other dashboard. */
-.bridge{
-  margin:0; display:flex; align-items:center; gap:.62vw; min-width:0;
-  font-weight:700; font-size:.93vw; line-height:1.2; letter-spacing:.145em; text-transform:uppercase;
-  color:var(--ri3);
+.rm-head{flex:0 0 auto; margin-bottom:2.4vw}
+.rm-head h2{margin:0; font-weight:700; font-size:3.05vw; line-height:1; letter-spacing:-.035em}
+/* A tracked caption with a short coloured rule in front of it. A pill with a dot in it
+   is the single most reused component on the internet. */
+.rm-bridge{
+  margin:.85vw 0 0; display:flex; align-items:center; gap:.6vw; min-width:0;
+  font-weight:700; font-size:.9vw; line-height:1.2; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--ri3);
 }
-.bridge::before{content:""; flex:0 0 auto; width:2px; height:1.15em; background:#b8871a}
-.bridge.up::before{background:#2c7a4b}
-.bridge.down::before{background:#ac3a22}
-.bridge.down{color:#8d3220}
-.bridge span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.rm-bridge::before{content:""; flex:0 0 auto; width:2px; height:1.1em; background:#b8871a}
+.rm-bridge.up::before{background:#2c7a4b}
+.rm-bridge.down::before{background:#ac3a22}
+.rm-bridge.down{color:#8d3220}
+.rm-bridge span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 
+/* Spaced by what things are, not evenly. The two plates say what is on and sit close
+   together; the faceplate is a different kind of object and stands well clear of them.
+   The stack hangs from the bottom so its foot lines up with the foot of the right hand
+   column, and whatever slack is left falls under the heading. */
 #decks{flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
-       justify-content:space-between}
+       justify-content:flex-end}
 
-.shelf{min-width:0}
-.shelf > h3, .cluster > h3{
-  display:flex; align-items:center; gap:.85vw; margin:0 0 .95vw;
-  font-weight:700; font-size:.93vw; line-height:1; letter-spacing:.155em; text-transform:uppercase;
-  color:var(--ri3); white-space:nowrap;
+/* ---- state plates: what is on ---- */
+
+/* Flat and matte on purpose. It is a labelled plate, not a key, and a gradient would
+   make it look pressable. 2px corners, because that is what the frames on the other
+   page have and this is screwed to the same wall. */
+.rm-plate{
+  position:relative; border-radius:2px; background:var(--plate);
+  box-shadow:
+    0 0 0 1px rgba(96,94,84,.30),
+    inset 0 1px 0 rgba(255,255,255,.9),
+    var(--wallcast);
 }
-/* The rule runs to the end of whatever it labels, so the two clusters at the bottom
-   declare their own widths instead of both sitting under one anonymous heading. */
-.shelf > h3::after, .cluster > h3::after{content:""; flex:1 1 auto; height:1px; background:var(--hair)}
+/* The keyline has to be drawn over the segments, or a lit segment's fill would run
+   straight over the plate's own edge. */
+.rm-plate::after{
+  content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+  box-shadow:inset 0 0 0 1px rgba(96,94,84,.30);
+}
 
-/* ---- the shared object ---- */
-.card, .key{
-  position:relative; border:0; padding:0; margin:0; cursor:pointer;
+.rm-src{display:grid; grid-template-columns:1fr 1fr; overflow:hidden}
+/* One seam, no gap. Two separated cards would say these are independent switches; they
+   are one input, and only one of them can be true. */
+.rm-src .rm-seg + .rm-seg{box-shadow:inset 1px 0 0 rgba(96,94,84,.26)}
+
+.rm-seg, .rm-pc{
+  position:relative; border:0; margin:0; background:none; cursor:pointer;
   font:inherit; color:var(--ri); text-align:left;
-  background:var(--face); box-shadow:var(--edge), var(--drop);
   -webkit-user-select:none; user-select:none;
-  /* transform only. box-shadow and background are never transitioned here because a
-     blur-radius animation on an A14 repaints the whole layer every frame. */
-  transition:transform .11s ease;
+  transition:transform .1s ease;
 }
-.card:active, .key:active, .card.on, .key.on{transform:translateY(1.5px) scale(.985)}
-.card[disabled], .key[disabled]{opacity:.4; cursor:default}
-.card[disabled]:active, .key[disabled]:active{transform:none}
+.rm-seg{height:12.6vw; padding:1.2vw 1.3vw; display:flex; flex-direction:column;
+        justify-content:space-between}
+.rm-seg:active, .rm-pc:active{transform:translateY(1px)}
+.rm-seg[disabled], .rm-pc[disabled]{opacity:.42; cursor:default}
+.rm-seg[disabled]:active, .rm-pc[disabled]:active{transform:none}
 
-.glyph{display:block; flex:0 0 auto; color:currentColor}
-.glyph svg{width:100%; height:100%; display:block}
-
-/* ---- sources and the PC ---- */
-.sources{display:grid; grid-template-columns:1fr 1fr; gap:1.1vw}
-.card.src{
-  height:10.4vw; border-radius:1.2vw; padding:1.15vw 1.25vw;
-  display:flex; flex-direction:column; justify-content:space-between;
+.rm-pc{
+  width:100%; height:7.4vw; padding:0 1.3vw; border-radius:2px;
+  display:flex; align-items:center; gap:1.1vw;
 }
-.card .glyph{width:2.4vw; height:2.4vw; opacity:.88}
-.card b{display:block; font-weight:700; font-size:1.66vw; line-height:1.12; letter-spacing:-.024em}
-.cstate{
-  display:block; font-weight:700; font-size:.9vw; line-height:1.1; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--ri3);
-}
-.card.src .cstate{margin-top:.42vw}
+#decks > .rm-src{margin-bottom:1.1vw}
+#decks > .rm-pc{margin-bottom:4.2vw}
 
-/* The gaming PC is deliberately a different shape from the two source cards. It is not
-   an input, and a panel that drew it identically would be telling that lie every time
-   anybody looked at it. */
-.card.pcbar{
-  width:100%; height:7.3vw; border-radius:1.2vw; padding:0 1.35vw;
-  display:flex; flex-direction:row; align-items:center; gap:1.15vw;
+.rm-glyph{display:block; flex:0 0 auto; color:currentColor}
+.rm-glyph svg{width:100%; height:100%; display:block}
+.rm-seg .rm-glyph, .rm-pc .rm-glyph{width:2.25vw; height:2.25vw; opacity:.85}
+.rm-seg b, .rm-pc b{display:block; font-weight:700; font-size:1.58vw; line-height:1.1;
+                    letter-spacing:-.022em}
+.rm-cap{
+  display:block; font-weight:700; font-size:.86vw; line-height:1.1;
+  letter-spacing:.135em; text-transform:uppercase; color:var(--ri3);
 }
-.card.pcbar .cstate{margin-left:auto; text-align:right}
+.rm-seg .rm-cap{margin-top:.4vw}
+.rm-pc .rm-cap{margin-left:auto; text-align:right}
 
-.card.live{
+/* On is the device's own colour, edge to edge. Filling the whole object rather than
+   lighting a dot is what makes the state readable from the doorway. */
+.rm-seg.live, .rm-pc.live{
   color:#fff;
-  background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 46%),
+  background:linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,0) 52%),
              var(--tint,#1e2427);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.30),
-    inset 0 0 0 1px rgba(0,0,0,.26),
-    var(--drop-lit);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.24);
 }
-.card.live .glyph{opacity:1}
-.card.live .cstate{color:rgba(255,255,255,.74)}
+.rm-seg.live .rm-glyph, .rm-pc.live .rm-glyph{opacity:1}
+.rm-seg.live .rm-cap, .rm-pc.live .rm-cap{color:rgba(255,255,255,.76)}
+/* A lit plate is heavier than an unlit one, so it hangs a shade further off the wall.
+   Only the outer object moves, never a key. */
+.rm-pc.live{box-shadow:
+  inset 0 1px 0 rgba(255,255,255,.24),
+  0 0 0 1px rgba(50,46,40,.34),
+  0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.28),
+  0 calc(var(--cast) * 1.15) calc(var(--cast) * 2.3) rgba(42,48,42,.32)}
 
-/* ---- the two clusters ---- */
-.controls{display:flex; gap:3.1vw; align-items:flex-start}
-.cluster{display:flex; flex-direction:column; min-width:0}
+/* ---- the faceplate: what you press ---- */
 
-/* A cross, because direction is spatial. In a labelled row you have to read the word
-   "left" before you can press it, which is the whole thing a d-pad exists to avoid. */
-.dpad{display:grid; grid-template-columns:repeat(3, var(--key));
-      grid-template-rows:repeat(3, var(--key)); gap:var(--kgap)}
-.padrow{display:flex; gap:var(--kgap)}
-.stack{display:grid; grid-template-rows:repeat(3, var(--key)); gap:var(--kgap); width:var(--key)}
-/* Volume in the left column, louder above quieter. Same grid, same key size as the rest. */
-.tvgrid{display:grid; grid-template-columns:repeat(2, var(--key));
+/* A moulded part, so it is the one thing on this page with a gradient and a softer 4px
+   corner. Two wells in one body, because they are one hand's worth of controls. */
+.rm-face{
+  display:flex; align-items:flex-start; gap:1.6vw;
+  padding:.7vw 1vw 1.1vw; border-radius:4px;
+  background:var(--face);
+  box-shadow:
+    0 0 0 1px rgba(96,94,84,.34),
+    inset 0 1.5px 0 rgba(255,255,255,.98),
+    inset 0 -1.5px 0 rgba(0,0,0,.10),
+    var(--wallcast);
+}
+.rm-grp{display:flex; flex-direction:column; min-width:0}
+/* Engraved, not printed: dark letters with a lit edge below them, which is what
+   moulded lettering does under a ceiling light. */
+.rm-grp > h3{
+  margin:.15vw 0 .6vw .25vw;
+  font-weight:700; font-size:.82vw; line-height:1; letter-spacing:.165em;
+  text-transform:uppercase; color:rgba(26,32,33,.42);
+  text-shadow:0 1px 0 rgba(255,255,255,.95);
+}
+.rm-padrow{display:flex; gap:var(--kgap)}
+.rm-pad{display:grid; grid-template-columns:repeat(3, var(--key));
         grid-template-rows:repeat(3, var(--key)); gap:var(--kgap)}
-.hole{visibility:hidden}
+.rm-col{display:grid; grid-template-rows:repeat(3, var(--key)); gap:var(--kgap);
+        width:var(--key)}
+/* Volume down the left column, louder above quieter, because that is where the finger
+   expects it and not because it fits the grid. */
+.rm-tv{display:grid; grid-template-columns:repeat(2, var(--key));
+       grid-template-rows:repeat(3, var(--key)); gap:var(--kgap)}
+.rm-hole{visibility:hidden}
 
-.key{
-  width:var(--key); height:var(--key); border-radius:1.05vw;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.42vw;
-}
-.key .glyph{width:2.2vw; height:2.2vw; color:rgba(20,26,27,.82)}
-.klab{font-weight:700; font-size:.88vw; line-height:1; letter-spacing:.07em; text-transform:uppercase; color:var(--ri2)}
-.key.arrow{gap:0}
-.key.arrow .glyph{width:1.85vw; height:1.85vw}
-
-/* The centre of the pad is the one dark object on this page that is not a state. It is
-   the click pad of the physical remote, and it gives the cross a middle to aim at. */
-.key.ok{
-  background:linear-gradient(180deg,#333a3d 0%,#1b2124 100%);
+/* Chunky, because a moulded key is chunky. Only tight shadows: this sits a millimetre
+   above its well, so it gets a contact line and a bottom lip and nothing wide. The
+   plates around it are the things far enough off the wall to cast. */
+.rm-key{
+  width:var(--key); height:var(--key); border-radius:.92vw;
+  border:0; padding:0; margin:0; cursor:pointer; font:inherit; color:var(--ri);
+  -webkit-user-select:none; user-select:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:.35vw;
+  background:var(--keyface);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.20),
-    inset 0 0 0 1px rgba(0,0,0,.45),
-    var(--drop-lit);
+    inset 0 1px 0 rgba(255,255,255,.98),
+    inset 0 0 0 1px rgba(60,62,54,.13),
+    inset 0 -2px 0 rgba(60,62,54,.13),
+    0 1.5px 2px rgba(40,44,38,.26);
+  transition:transform .09s ease;
 }
-.key.ok .klab{color:#fff; font-size:1.28vw; letter-spacing:.11em}
+/* Pressed means down into the well, not shrunk. */
+.rm-key:active, .rm-key.on{transform:translateY(2px)}
+.rm-key[disabled]{opacity:.42; cursor:default}
+.rm-key[disabled]:active{transform:none}
+.rm-key .rm-glyph{width:2.1vw; height:2.1vw; color:rgba(26,32,33,.8)}
+.rm-klab{font-weight:700; font-size:.82vw; line-height:1; letter-spacing:.06em;
+         text-transform:uppercase; color:var(--ri2)}
+.rm-key.arrow{gap:0}
+.rm-key.arrow .rm-glyph{width:1.75vw; height:1.75vw}
 
-.key.live{
-  background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 46%),
+/* Round, because the clickpad on the real remote is round, and because the centre of a
+   cross needs to be a different shape from its arms to be aimed at without looking. */
+.rm-key.ok{
+  border-radius:50%;
+  background:linear-gradient(180deg,#39413f 0%,#1c2321 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22),
+    inset 0 0 0 1px rgba(0,0,0,.5),
+    inset 0 -2px 0 rgba(0,0,0,.35),
+    0 1.5px 2.5px rgba(40,44,38,.34);
+}
+.rm-key.ok .rm-klab{color:#fff; font-size:1.2vw; letter-spacing:.1em}
+
+.rm-key.live{
+  background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 52%),
              var(--tint,#a3271f);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.28),
-    inset 0 0 0 1px rgba(0,0,0,.26),
-    var(--drop-lit);
+    inset 0 1px 0 rgba(255,255,255,.26),
+    inset 0 0 0 1px rgba(0,0,0,.3),
+    inset 0 -2px 0 rgba(0,0,0,.24),
+    0 1.5px 2.5px rgba(40,44,38,.3);
 }
-.key.live .glyph{color:#fff}
-.key.live .klab{color:rgba(255,255,255,.86)}
+.rm-key.live .rm-glyph{color:#fff}
+.rm-key.live .rm-klab{color:rgba(255,255,255,.86)}
 
-/* ---- the right slab ---- */
-.np{
-  min-width:0; border-radius:1.5vw; padding:2.2vw 2.2vw 2.4vw;
-  background:var(--face); box-shadow:var(--edge), var(--drop);
-  display:flex; flex-direction:column; overflow:hidden;
-}
-.np-top{
-  flex:0 0 auto; display:flex; align-items:center; gap:.85vw;
-  font-weight:700; font-size:.93vw; line-height:1; letter-spacing:.155em; text-transform:uppercase; color:var(--ri3);
-}
-.np-top::after{content:""; flex:1 1 auto; height:1px; background:var(--hair)}
+/* ---- the right hand side: hung, not framed ---- */
 
-/* The sleeve sits on the slab with its own shadow rather than being a panel region,
-   so it reads as a thing placed there. */
-.np-art{
-  position:relative; flex:1 1 auto; min-height:0; margin-top:1.5vw; width:100%;
-  border-radius:.45vw; overflow:hidden;
-  background:linear-gradient(152deg,#2f383f 0%,#151a1e 72%);
+.rm-right{display:flex; flex-direction:column; min-width:0; min-height:0}
+/* Hung on the drywall like the photographs on page one: 1.5px corners, the same
+   two-stop wall shadow, and a hair off level, because nothing anybody ever hung on a
+   wall is level. The tilt is on this and on nothing else; a key screwed to a faceplate
+   would be straight. */
+.rm-sleeve{
+  position:relative; flex:1 1 auto; min-height:0; width:100%;
+  border-radius:1.5px; overflow:hidden;
+  transform:rotate(-.45deg);
+  background:linear-gradient(160deg,#fbfaf5 0%,#f1efe6 62%,#e6e3d8 100%);
   box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,.45),
-    0 2px 4px rgba(20,26,27,.22),
-    0 16px 28px -12px rgba(20,26,27,.50);
+    0 0 0 1px rgba(96,94,84,.34),
+    inset 0 0 5vw rgba(90,88,76,.10),
+    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.26),
+    0 calc(var(--cast) * 1.25) calc(var(--cast) * 2.4) rgba(42,48,42,.34);
 }
-.np-art img{width:100%; height:100%; object-fit:contain; display:none}
-.np-art.has img{display:block}
-.np-art.has .np-fb{opacity:0}
-.np-fb{
+.rm-sleeve img{width:100%; height:100%; object-fit:cover; display:none}
+.rm-sleeve.has{background:linear-gradient(154deg,#333c42 0%,#161b1f 74%);
+              box-shadow:
+                0 0 0 1px rgba(20,24,22,.5),
+                0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.26),
+                0 calc(var(--cast) * 1.25) calc(var(--cast) * 2.4) rgba(42,48,42,.34)}
+.rm-sleeve.has img{display:block}
+.rm-sleeve.has .rm-fb{opacity:0}
+.rm-fb{
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  font-weight:600; font-size:9vw; line-height:1; letter-spacing:-.05em; color:rgba(255,255,255,.24);
+  font-weight:600; font-size:34vw; line-height:.78; letter-spacing:-.06em;
+  color:rgba(26,32,33,.115);
+  /* Off centre, the way a printer would set a mark that is meant to be cropped. */
+  transform:translate(-4%, 3%);
 }
 
-.np-meta{flex:0 0 auto; margin-top:1.7vw}
-.np-meta b{
-  font-weight:700; font-size:2.55vw; line-height:1.12; letter-spacing:-.032em; color:var(--ri);
+.rm-meta{flex:0 0 auto; margin-top:1.8vw}
+.rm-meta b{
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  font-weight:700; font-size:2.4vw; line-height:1.1; letter-spacing:-.03em; color:var(--ri);
 }
-.np-meta span{
+.rm-meta span{
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-  margin-top:.6vw; font-weight:500; font-size:1.22vw; line-height:1.32; color:var(--ri2);
+  margin-top:.55vw; font-weight:500; font-size:1.15vw; line-height:1.3; color:var(--ri2);
 }
 
-.np-prog{flex:0 0 auto; margin-top:1.5vw}
-.np-track{
-  height:.52vw; min-height:5px; border-radius:.18vw; overflow:hidden;
-  background:rgba(20,26,27,.14); box-shadow:inset 0 1px 1px rgba(20,26,27,.16);
-}
+/* A ruled line on the wall, not a capsule in a card. Thin, because it is a measurement
+   and not a control. */
+.rm-prog{flex:0 0 auto; margin-top:1.2vw}
+.rm-track{height:3px; background:rgba(26,32,33,.17); overflow:hidden}
 /* scaleX, not width: a width transition relayouts, a transform does not. */
-.np-fill{display:block; width:100%; height:100%; background:var(--ri);
+.rm-fill{display:block; width:100%; height:100%; background:var(--ri);
          transform:scaleX(0); transform-origin:left center; transition:transform .4s var(--ease)}
-.np-times{
-  display:flex; justify-content:space-between; margin-top:.78vw;
-  font-weight:700; font-size:.9vw; line-height:1; letter-spacing:.11em; color:var(--ri3);
+.rm-times{
+  display:flex; justify-content:space-between; margin-top:.7vw;
+  font-weight:700; font-size:.86vw; line-height:1; letter-spacing:.1em; color:var(--ri3);
   font-variant-numeric:tabular-nums;
 }
 
-.np-clock{display:none; flex:1 1 auto; min-height:0; flex-direction:column; justify-content:center}
-/* The note lives with the clock, not pinned to the floor, so the whole date block reads
-   as one mass centred on the slab instead of two things at opposite ends of a void. */
-.np-note{margin-top:1.9vw}
-.np-note{display:none; flex:0 0 auto; font-weight:700; font-size:.93vw; line-height:1; letter-spacing:.155em;
-         text-transform:uppercase; color:var(--ri3)}
-.np.clock .np-art, .np.clock .np-meta, .np.clock .np-prog{display:none}
-.np.clock .np-clock{display:flex}
-.np.clock .np-note{display:block}
+/* ---- and the clock behind it ---- */
 
-.cl-time{
-  display:flex; align-items:baseline; gap:.7vw;
-  font-weight:600; font-size:13.6vw; line-height:.84; letter-spacing:-.055em; color:var(--ri);
-  white-space:nowrap;
-  font-variant-numeric:tabular-nums;
+/* What the panel is doing for twenty three hours of the day, so it gets the whole
+   column and no container at all. Numerals painted straight onto the drywall. */
+/* Bottom aligned, so the last line of the clock sits on the same line as the foot of
+   the faceplate. Centred, it floated in the middle of a void. */
+.rm-cl{display:none; flex:1 1 auto; min-height:0; flex-direction:column;
+       justify-content:flex-end}
+.rm-right.clock .rm-sleeve,
+.rm-right.clock .rm-meta, .rm-right.clock .rm-prog{display:none}
+.rm-right.clock .rm-cl{display:flex}
+
+.rm-day{
+  font-weight:700; font-size:.9vw; line-height:1; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--ri3); margin-bottom:1.4vw;
 }
-.cl-ampm{font-size:2.4vw; font-weight:700; letter-spacing:.09em; color:var(--ri3)}
-.cl-date{
-  margin-top:1.7vw; padding-top:1.6vw; border-top:1px solid var(--hair);
-  font-weight:600; font-size:1.9vw; line-height:1.2; letter-spacing:-.014em; color:var(--ri2);
+.rm-time{
+  display:flex; align-items:baseline; gap:.65vw;
+  font-weight:600; font-size:12.6vw; line-height:.82; letter-spacing:-.055em;
+  color:var(--ri); white-space:nowrap; font-variant-numeric:tabular-nums;
+}
+.rm-ampm{font-size:2.2vw; font-weight:700; letter-spacing:.09em; color:var(--ri3)}
+.rm-date{
+  margin-top:1.6vw; font-weight:600; font-size:1.75vw; line-height:1.2;
+  letter-spacing:-.014em; color:var(--ri2);
+}
+.rm-note{
+  margin-top:2.2vw; font-weight:700; font-size:.86vw; line-height:1; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--ri3);
 }
 
 /* ============================ story panel ============================ */
@@ -672,27 +894,27 @@ body.idle #wall::after{opacity:.5}
     <section class="page" id="page-wall" style="--i:0"><div id="plane"></div></section>
     <section class="page" id="page-room" style="--i:1">
       <div class="roomwrap">
-        <div class="roomL">
-          <header class="roomhead">
+        <div class="rm-left">
+          <header class="rm-head">
             <h2>The room</h2>
-            <p class="bridge" id="bridgeState"><span id="bridgeText">looking for the bridge</span></p>
+            <p class="rm-bridge" id="bridgeState"><span id="bridgeText">looking for the bridge</span></p>
           </header>
           <div id="decks"></div>
         </div>
-        <!-- Starts in the clock state, because that is what is true until the bridge
-             says otherwise, and an empty artwork frame would be worse than no frame. -->
-        <aside class="np clock" id="np">
-          <div class="np-top"><span id="npKick">Now playing</span></div>
-          <div class="np-art" id="npArt"><img id="npImg" alt=""><div class="np-fb" id="npFb"></div></div>
-          <div class="np-meta"><b id="npTitle"></b><span id="npSub"></span></div>
-          <div class="np-prog">
-            <div class="np-track"><i class="np-fill" id="npFill"></i></div>
-            <div class="np-times"><span id="npPos"></span><span id="npRem"></span></div>
+        <!-- Starts on the clock, because that is what is true until the bridge says
+             otherwise, and an empty sleeve hanging there would be worse than none. -->
+        <aside class="rm-right clock" id="np">
+          <div class="rm-sleeve" id="npArt"><img id="npImg" alt=""><span class="rm-fb" id="npFb"></span></div>
+          <div class="rm-meta"><b id="npTitle"></b><span id="npSub"></span></div>
+          <div class="rm-prog">
+            <div class="rm-track"><i class="rm-fill" id="npFill"></i></div>
+            <div class="rm-times"><span id="npPos"></span><span id="npRem"></span></div>
           </div>
-          <div class="np-clock">
-            <div class="cl-time"><span id="clTime">00:00</span><span class="cl-ampm" id="clAm"></span></div>
-            <div class="cl-date" id="clDate"></div>
-            <div class="np-note">Nothing is playing</div>
+          <div class="rm-cl">
+            <div class="rm-day" id="clDay"></div>
+            <div class="rm-time"><span id="clTime">00:00</span><span class="rm-ampm" id="clAm"></span></div>
+            <div class="rm-date" id="clDate"></div>
+            <div class="rm-note">Nothing is playing</div>
           </div>
         </aside>
       </div>
@@ -1534,17 +1756,15 @@ const ICON = {
   voldn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>',
   menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>',
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><path d="M8 21h8"/></svg>',
-  source:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>',
-  ok:'OK'
+  source:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>'
 };
 
-/* Sources first and biggest, because "put the Steam Machine on" is what anyone actually
-   walks up to this for. Each one reports whether it is the live input, so the panel
-   answers the question before it is touched.
+/* The inputs are two halves of one plate rather than two cards, because they are one
+   mutually exclusive choice. Only one of them can be the live input, and a layout that
+   drew them as independent switches would be saying otherwise.
 
-   The gaming PC is not in that row. It is a separate machine on its own monitors, and a
-   panel that drew it as a third input would be lying every time anybody looked at it. It
-   gets its own heading and its own shape.
+   The gaming PC is not in that plate. It is a separate machine on its own monitors, and
+   it gets its own shape for the same reason.
 
    Tints are the devices' own colours: Apple TV graphite, Steam navy, the PC's case
    lighting, the TV's power red. Nothing else on this page is coloured, so a colour
@@ -1578,9 +1798,9 @@ const TVKEYS = [
 const decksEl = $('#decks');
 const stateful = [];              // controls that reflect something, redrawn from /state
 
-const glyph = name => '<span class="glyph">' + (ICON[name] || '') + '</span>';
+const glyph = name => '<span class="rm-glyph">' + (ICON[name] || '') + '</span>';
 
-/* One place where a control is armed, so a card and a key cannot drift apart in how they
+/* One place where a control is armed, so a plate and a key cannot drift apart in how they
    report state or send a command. */
 function arm(node, k){
   node.type = 'button';
@@ -1596,67 +1816,62 @@ function arm(node, k){
   return node;
 }
 
-function srcCard(k){
-  return arm(el('button', 'card src', glyph(k.icon) +
+function segBtn(k){
+  return arm(el('button', 'rm-seg', glyph(k.icon) +
     '<span><b>' + esc(k.label) + '</b>' +
-    '<span class="cstate">' + esc(k.sub) + '</span></span>'), k);
+    '<span class="rm-cap">' + esc(k.sub) + '</span></span>'), k);
 }
-function pcCard(k){
-  return arm(el('button', 'card pcbar', glyph(k.icon) +
-    '<b>' + esc(k.label) + '</b><span class="cstate">' + esc(k.sub) + '</span>'), k);
+function pcBtn(k){
+  return arm(el('button', 'rm-plate rm-pc', glyph(k.icon) +
+    '<b>' + esc(k.label) + '</b><span class="rm-cap">' + esc(k.sub) + '</span>'), k);
 }
 function keyBtn(k, cls){
-  return arm(el('button', 'key' + (cls ? ' ' + cls : ''),
+  return arm(el('button', 'rm-key' + (cls ? ' ' + cls : ''),
     (k.icon ? glyph(k.icon) : '') +
-    (k.text ? '<span class="klab">' + esc(k.text) + '</span>' : '') +
-    (k.label && !k.text && !k.bare ? '<span class="klab">' + esc(k.label) + '</span>' : '')), k);
+    (k.text ? '<span class="rm-klab">' + esc(k.text) + '</span>' : '') +
+    (k.label && !k.text && !k.bare ? '<span class="rm-klab">' + esc(k.label) + '</span>' : '')), k);
 }
 
-function shelf(title, body){
-  const s = el('section', 'shelf');
-  s.appendChild(el('h3', null, esc(title)));
-  s.appendChild(body);
-  return s;
-}
+const srcPlate = el('div', 'rm-plate rm-src');
+SOURCES.forEach(k => srcPlate.appendChild(segBtn(k)));
+decksEl.appendChild(srcPlate);
+decksEl.appendChild(pcBtn(GAMING));
 
-const srcRow = el('div', 'sources');
-SOURCES.forEach(k => srcRow.appendChild(srcCard(k)));
-decksEl.appendChild(shelf('On the TV', srcRow));
-decksEl.appendChild(shelf('On its own monitors', pcCard(GAMING)));
+/* One faceplate, two groups. The space between them and an engraved label each do the
+   grouping that two headings with two rules under them were doing before. */
+const face = el('div', 'rm-face');
 
-const controls = el('div', 'controls');
-
-const atv = el('div', 'cluster');
+const atv = el('section', 'rm-grp');
 atv.appendChild(el('h3', null, 'Apple TV'));
-const pad = el('div', 'dpad');
+const pad = el('div', 'rm-pad');
 const d = APPLETV.pad;
 const arrow = (action, icon, label) =>
   keyBtn({device:d.device, action, icon, label, bare:true}, 'arrow');
 pad.append(
-  el('div', 'hole'), arrow(d.up, 'up', 'Up'), el('div', 'hole'),
+  el('div', 'rm-hole'), arrow(d.up, 'up', 'Up'), el('div', 'rm-hole'),
   arrow(d.left, 'left', 'Left'),
   keyBtn({device:d.device, action:d.mid, text:'OK', label:'Select'}, 'ok'),
   arrow(d.right, 'right', 'Right'),
-  el('div', 'hole'), arrow(d.down, 'down', 'Down'), el('div', 'hole'));
-const stack = el('div', 'stack');
-APPLETV.keys.forEach(k => stack.appendChild(keyBtn(k)));
-const padrow = el('div', 'padrow');
-padrow.append(pad, stack);
+  el('div', 'rm-hole'), arrow(d.down, 'down', 'Down'), el('div', 'rm-hole'));
+const col = el('div', 'rm-col');
+APPLETV.keys.forEach(k => col.appendChild(keyBtn(k)));
+const padrow = el('div', 'rm-padrow');
+padrow.append(pad, col);
 atv.appendChild(padrow);
 
-const tv = el('div', 'cluster');
+const tv = el('section', 'rm-grp');
 tv.appendChild(el('h3', null, 'TV'));
-const tvgrid = el('div', 'tvgrid');
+const tvgrid = el('div', 'rm-tv');
 TVKEYS.forEach(k => tvgrid.appendChild(keyBtn(k)));
 tv.appendChild(tvgrid);
 
-controls.append(atv, tv);
-decksEl.appendChild(controls);
+face.append(atv, tv);
+decksEl.appendChild(face);
 
 /* ---------------- now playing, and the clock behind it ---------------- */
 
 const npEl = $('#np'), npArt = $('#npArt'), npImg = $('#npImg');
-const clTime = $('#clTime'), clAm = $('#clAm'), clDate = $('#clDate'), npKick = $('#npKick');
+const clTime = $('#clTime'), clAm = $('#clAm'), clDate = $('#clDate'), clDay = $('#clDay');
 let artUrl = '';
 
 /* mmss in the helpers rolls an hour into minutes, which turns a film into "104:12". */
@@ -1677,7 +1892,7 @@ const fmtDate = new Intl.DateTimeFormat(undefined, {day:'numeric', month:'long',
 /* system-ui is SF Pro on the iPad and something wider everywhere else, so a fixed size
    either clips on one and looks timid on the other. Measured once per distinct time
    string, which is twice a day at most, not once a second. */
-const clRow = document.querySelector('.cl-time');
+const clRow = document.querySelector('.rm-time');
 let clFit = '';
 function fitClock(){
   const sig = clTime.textContent.length + '/' + clAm.textContent.length;
@@ -1702,7 +1917,7 @@ function paintClock(){
   if (m){ ap = m[1].replace(/[.\s]/g, '').toUpperCase(); t = t.slice(0, m.index); }
   clTime.textContent = t.trim();
   clAm.textContent = ap;
-  npKick.textContent = fmtDay.format(now);
+  clDay.textContent = fmtDay.format(now);
   clDate.textContent = fmtDate.format(now);
   fitClock();
 }
@@ -1726,7 +1941,6 @@ function paintNowPlaying(np){
   npEl.classList.toggle('clock', !on);
   if (!on){ startClock(); return; }
   stopClock();
-  npKick.textContent = 'Now playing';
   $('#npTitle').textContent = np.title || '';
   $('#npSub').textContent = np.subtitle || '';
   $('#npFb').textContent = (np.title || '').trim().charAt(0).toUpperCase() || '♪';
@@ -1758,7 +1972,7 @@ function paintState(st){
     if (kind === 'tv') live = !!(st && (want === 'on' ? st.tv_on : st.muted));
     if (kind === 'pc') live = !!(st && st.pcs && st.pcs[want]);
     t.classList.toggle('live', live);
-    const sub = t.querySelector('.cstate');
+    const sub = t.querySelector('.rm-cap');
     if (sub && t.dataset.busy) sub.textContent = live ? t.dataset.busy : t.dataset.rest;
   });
   paintNowPlaying(st && st.now_playing);
@@ -1777,9 +1991,9 @@ function bridgeUrl(path){
 
 function setBridge(up, text){
   bridgeUp = up;
-  bridgeEl.className = 'bridge ' + (up ? 'up' : 'down');
+  bridgeEl.className = 'rm-bridge ' + (up ? 'up' : 'down');
   bridgeTx.textContent = text;
-  decksEl.querySelectorAll('.card, .key').forEach(b => { b.disabled = !up; });
+  decksEl.querySelectorAll('.rm-seg, .rm-pc, .rm-key').forEach(b => { b.disabled = !up; });
 }
 
 async function pingBridge(){
@@ -1791,7 +2005,7 @@ async function pingBridge(){
     const r = await fetch(u, {signal: ctl.signal, cache: 'no-store'});
     clearTimeout(t);
     const j = await r.json();
-    setBridge(true, j.devices ? j.devices.join(' \u00b7 ') : 'bridge up');
+    setBridge(true, j.devices ? j.devices.join(' · ') : 'bridge up');
     paintState(j.state);
   } catch (e) {
     setBridge(false, 'bridge not answering');
@@ -1834,7 +2048,9 @@ function setPage(n){
   pageEls.forEach((el2, i) => el2.classList.toggle('here', i === page));
   document.querySelectorAll('#dots button').forEach((b, i) =>
     b.classList.toggle('on', i === page));
-  if (page === 1) pingBridge();
+  /* The clock only ticks while the page holding it is on screen. */
+  if (page === 1){ pingBridge(); if (npEl.classList.contains('clock')) startClock(); }
+  else stopClock();
   resetIdle();
 }
 document.querySelectorAll('#dots button').forEach(b =>
@@ -1951,6 +2167,8 @@ function wake(){
   idle = false;
   document.body.classList.remove('idle');
   resetIdle();
+  /* The clock retired itself when the panel went idle, so waking has to hire it back. */
+  if (page === 1 && npEl.classList.contains('clock')) startClock();
 }
 function resetIdle(){
   clearTimeout(idleTimer);

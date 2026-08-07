@@ -513,6 +513,383 @@ body.idle #wall::after{opacity:.5}
 }
 #scrim.on{opacity:1; visibility:visible}
 
+/* ============================ the room ============================
+
+   Page two is not a dashboard. Five attempts at one all came out looking the same,
+   because a grid of device tiles is a grid of device tiles whatever you paint on it.
+   This is the room instead: you are standing where the iPad hangs, at the left end of
+   the desk, looking right. The desk wall runs away from you on the near left and the
+   TV wall is the far plane. Both are the same drywall as page one, because they are
+   the same wall.
+
+   State is physical. There is no pill anywhere that says ON. The TV is lit or it is
+   black, the fan ring glows or it does not, the strip throws real coloured light onto
+   the drywall behind it. If something on this page has colour, that colour means the
+   thing is on. */
+
+#pages{position:absolute; inset:0; transform-style:preserve-3d}
+.page{
+  position:absolute; inset:0;
+  transform-style:preserve-3d;
+  /* One property animated on one element per page. --page is set by setPage(). */
+  transform:translateX(calc((var(--i) - var(--page, 0)) * 100%));
+  transition:transform .46s var(--ease);
+}
+/* The wall page owns the drywall backdrop; the room page draws its own two surfaces
+   over it, so #wall is never asked to be two walls at once. */
+body.idle .page{opacity:0; pointer-events:none; transition:opacity .7s var(--ease)}
+
+/* ---------------- the two surfaces ----------------
+   The corner is the whole trick. A single flat elevation of a room reads as a
+   diagram; two planes meeting at an angle read as a place, and the lean from page
+   one then slides them against each other for free.
+
+   The near wall is anchored by its far edge (transform-origin at the corner) so that
+   rotating it swings the end nearest the viewer forward rather than sliding the whole
+   surface sideways. That keeps the corner seam nailed to one place on screen at every
+   tilt angle, which is what stops the two walls from visibly coming apart. */
+#room{
+  position:absolute; inset:0; transform-style:preserve-3d;
+  /* Its own perspective, much shorter than the stage's 1500px. The wall page wants a
+     long lens: it is a flat wall and a strong perspective would bow it. A room wants a
+     short one, or 8ft of near wall foreshortens by almost nothing and the corner reads
+     as two flat panels side by side, which is exactly how the first attempt looked. */
+  perspective:760px;
+  perspective-origin:36% 44%;
+}
+
+.surface{
+  position:absolute;
+  background-color:var(--wall);
+  background-image:url(art/wall-texture.png);
+  background-size:256px 256px;
+  transform-style:preserve-3d;
+}
+/* The far wall: straight ahead, holding the TV, the console, the Dyson and the
+   ceiling light. Bled off three sides so a tilt never swings an edge into shot. */
+/* Both surfaces are boxed in vw, one scale for both axes, so an inch is the same
+   length whichever way it is measured. The ceiling line sits --ceilY down from the top
+   of each box and the floor is a room height below it; every object is placed against
+   one of those two lines rather than against the box, so changing the bleed can never
+   move the furniture. */
+#farWall{left:var(--cornerX); right:calc(0px - var(--bleed)); top:calc(0px - var(--bleed));
+         bottom:calc(0px - var(--bleed))}
+/* The near wall: the desk, running away from the viewer on the left. Hinged at the
+   corner so that rotating it swings the near end forward instead of sliding the whole
+   surface sideways, which is what keeps the seam nailed to one place at every tilt. */
+#nearWall{
+  right:calc(100% - var(--cornerX)); width:var(--nearW);
+  top:calc(0px - var(--bleed)); bottom:calc(0px - var(--bleed));
+  transform-origin:100% 50%;
+  transform:rotateY(var(--nearAngle, 62deg));
+}
+
+/* ---------------- the floor ----------------
+   Without it the objects stand on nothing and the whole thing reads as elevations on
+   graph paper. It is one plane laid down at the floor line, dark boards to match the
+   room, plus the baseboard, which is the detail that actually sells where the wall
+   stops. */
+.floor{
+  position:absolute; left:-30%; right:-30%; height:var(--depth, 120vw);
+  top:var(--floorY);
+  transform-origin:50% 0;
+  transform:rotateX(76deg);
+  background:
+    repeating-linear-gradient(93deg,
+      rgba(0,0,0,.16) 0 .1vw, transparent .1vw 3.2vw),
+    linear-gradient(to bottom, #4a3a2e, #2e241c 45%, #221a14);
+  box-shadow:inset 0 .5vw 1.6vw rgba(0,0,0,.4);
+}
+.base{
+  position:absolute; left:-30%; right:-30%; height:.62vw;
+  bottom:var(--baseB);
+  background:linear-gradient(to bottom,#fbfbf8,#eceee9 62%,#dcdfd9);
+  box-shadow:0 .1vw .3vw rgba(24,32,30,.22), inset 0 .08vw 0 #fff;
+}
+/* A wall turned away from the room's light is darker, and that difference is most of
+   what makes the corner read as a corner rather than as a crease in a photograph. */
+#nearWall::after,#farWall::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+}
+#nearWall::after{
+  background:linear-gradient(to right, rgba(20,28,26,.30), rgba(20,28,26,.10) 62%,
+                                       rgba(20,28,26,.16));
+}
+#farWall::after{
+  background:
+    radial-gradient(120% 80% at 26% 14%, rgba(255,255,255,.09), transparent 60%),
+    radial-gradient(90% 70% at 92% 98%, rgba(0,0,0,.07), transparent 58%);
+}
+/* The corner itself: a hairline of contact shadow where the two planes meet. Without
+   it they abut like two pieces of paper. */
+#farWall::before{
+  content:""; position:absolute; left:0; top:0; bottom:0; width:2.6vw;
+  background:linear-gradient(to right, rgba(18,26,24,.26), transparent);
+  pointer-events:none; z-index:2;
+}
+
+/* ---------------- objects ----------------
+   Same contract as .piece on the wall page: inches in, one axis of placement, height
+   falls out of the object's own aspect so nothing can be set to the wrong shape.
+   Objects standing on the floor are placed by their bottom edge, so raising the
+   ceiling or changing ROOM_IN can never leave the Dyson floating. */
+.obj{
+  position:absolute;
+  left:var(--x); width:var(--w);
+  transform:translateZ(var(--z, .8vw));
+  transition:transform .28s var(--ease), filter .5s var(--ease);
+  cursor:pointer;
+}
+.obj.hung{top:var(--y)}
+.obj.stood{bottom:var(--b)}
+.obj:active{transform:translateZ(var(--z, .8vw)) scale(.985)}
+.obj img{width:100%; height:auto}
+
+/* Everything on this page throws a shadow onto the wall behind it, and objects on the
+   floor throw a second, softer one down. One shared pair of values, so a big object
+   and a small one look lit by the same room rather than each inventing its own sun. */
+.obj .body{position:relative; filter:drop-shadow(0 .5vw .7vw rgba(28,36,34,.28))}
+
+/* ---------------- the television ----------------
+   Off is not black. A switched-off panel in a lit room is a very dark grey mirror that
+   picks up the wall around it, and painting it #000 is the single fastest way to make
+   a screen look like a hole cut in the drawing. */
+.tv .panel-glass{
+  position:relative; aspect-ratio:var(--ratio, 1.777);
+  background:linear-gradient(168deg,#23282b,#15181a 42%,#0e1113);
+  border:.22vw solid #1b1e20; border-radius:.18vw;
+  box-shadow:0 0 0 .06vw rgba(255,255,255,.10) inset,
+             0 .55vw 1.1vw rgba(26,34,32,.34);
+  overflow:hidden;
+}
+.tv .art{position:absolute; inset:0; opacity:0; transition:opacity .55s var(--ease);
+         background-size:cover; background-position:center}
+.tv .sheen{
+  position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(122deg, rgba(255,255,255,.11), transparent 34%,
+                             transparent 72%, rgba(255,255,255,.05));
+}
+.obj.on .tv .art{opacity:1}
+/* A lit screen spills onto the wall around it. This is the bias light the strip is
+   meant to replace, and having it on by default is what makes an on TV read as on
+   from across the room rather than only up close. */
+.tv .spill{
+  position:absolute; inset:-38% -22%; z-index:-1; pointer-events:none;
+  opacity:0; transition:opacity .6s var(--ease);
+  background:radial-gradient(58% 62% at 50% 50%,
+             rgba(150,180,225,.42), rgba(150,180,225,.12) 55%, transparent 72%);
+}
+.obj.on .tv .spill{opacity:1}
+
+/* ---------------- the Dyson ----------------
+   A TP07 is 41in tall and 8in across, and its shape is an amplifier loop on a
+   cylinder. Those are measurements, not a guess at what it looks like, so the
+   placeholder is in the right place at the right size and Saturday's photograph drops
+   straight over it. */
+.dyson .loop{
+  /* The amplifier loop is about 25in of the TP07's 41in, on an 8.07in body, so the
+     aspect is 8.07/25. Getting this wrong is very visible: the earlier .62 made it a
+     squat O and the whole object read as a fan heater. */
+  aspect-ratio:.323;
+  border:1.15vw solid #b9bfc2;
+  border-radius:50% / 46%;
+  background:transparent;
+  box-shadow:inset 0 0 0 .1vw rgba(255,255,255,.5),
+             0 .4vw .7vw rgba(28,36,34,.22);
+}
+.dyson .base{
+  /* 16in of base on a 7.1in-wide cylinder, which is what the remaining height is. */
+  height:0; padding-bottom:225%;
+  margin:-.4vw auto 0; width:88%;
+  border-radius:.5vw .5vw .28vw .28vw;
+  background:linear-gradient(96deg,#cfd4d7,#aeb5b9 46%,#c6ccd0);
+  box-shadow:inset 0 -.3vw .5vw rgba(0,0,0,.12);
+}
+/* Running is shown by the air, not by a light: the loop's interior gets a faint
+   vertical streak. It is the only honest way to show a bladeless fan doing anything. */
+.dyson .flow{
+  position:absolute; left:14%; right:14%; top:4%; height:38%;
+  opacity:0; transition:opacity .5s var(--ease);
+  background:linear-gradient(to top, rgba(255,255,255,0), rgba(255,255,255,.34));
+  filter:blur(.25vw);
+}
+.obj.on .dyson .flow{opacity:1}
+
+/* ---------------- the ceiling light ----------------
+   The Karelia is a 19in illuminated ring. Off it is a dark glass annulus; on it is the
+   brightest thing in the scene and it lifts the whole far wall, which is the correct
+   behaviour and also the reason it is worth drawing at all. */
+.ring{
+  aspect-ratio:1; border-radius:50%;
+  border:.9vw solid rgba(228,232,234,.65);
+  box-shadow:inset 0 0 .5vw rgba(0,0,0,.18);
+  transition:border-color .6s var(--ease), box-shadow .6s var(--ease);
+}
+.obj.on .ring{
+  border-color:rgba(255,250,232,.98);
+  box-shadow:0 0 2.4vw rgba(255,244,214,.85), 0 0 6vw rgba(255,240,200,.45),
+             inset 0 0 .6vw rgba(255,250,235,.9);
+}
+
+/* ---------------- the strip ----------------
+   The strip is the one object whose whole point is the light it throws rather than the
+   thing itself, so it is drawn as the wash on the wall plus a thin bright line, and its
+   colour is whatever the strip is actually set to. --glow is written by the state. */
+.strip .line{
+  height:.34vw; border-radius:.34vw;
+  background:var(--glow, #444); opacity:.25;
+  transition:opacity .5s var(--ease), background .5s var(--ease);
+}
+.strip .wash{
+  position:absolute; left:-14%; right:-14%; bottom:-.4vw; height:26vw; z-index:-1;
+  pointer-events:none; opacity:0; transition:opacity .7s var(--ease);
+  background:radial-gradient(64% 100% at 50% 100%,
+             var(--glow, #6cf) 0%, transparent 74%);
+  mix-blend-mode:screen; filter:blur(1.2vw);
+}
+.obj.on .strip .line{opacity:1}
+.obj.on .strip .wash{opacity:.62}
+
+/* ---------------- the tower ----------------
+   White mesh front with a blue accent, per the photograph. Asleep it is a white box;
+   awake the mesh has light behind it. */
+.tower .case{
+  aspect-ratio:var(--ratio, .46);
+  border-radius:.3vw;
+  background:linear-gradient(102deg,#f4f5f3,#e6e8e5 58%,#d8dbd7);
+  box-shadow:inset 0 0 0 .08vw rgba(120,126,120,.4),
+             0 .5vw .9vw rgba(28,36,34,.26);
+  position:relative; overflow:hidden;
+}
+.tower .mesh{
+  position:absolute; left:6%; right:6%; top:5%; bottom:5%;
+  background-image:radial-gradient(rgba(120,126,124,.55) .5px, transparent .5px);
+  background-size:.34vw .34vw;
+}
+.tower .accent{
+  position:absolute; left:8%; right:8%; top:7%; height:.3vw; border-radius:.3vw;
+  background:#3aa0ff; opacity:0; transition:opacity .6s var(--ease);
+  box-shadow:0 0 .9vw rgba(58,160,255,.9);
+}
+.obj.on .tower .accent{opacity:1}
+.tower .glow{
+  position:absolute; inset:0; opacity:0; transition:opacity .6s var(--ease);
+  background:radial-gradient(70% 60% at 50% 30%, rgba(90,170,255,.30), transparent 70%);
+}
+.obj.on .tower .glow{opacity:1}
+
+/* ---------------- a generic box ----------------
+   The console, the Apple TV, the Sonos: small dark rectangles until they are
+   photographed. Deliberately plain rather than invented detail, because a made-up
+   moulded curve on a box that is about to be replaced by a photograph is worse than
+   no curve at all. */
+.slabbox{
+  aspect-ratio:var(--ratio, 2.6);
+  border-radius:.22vw;
+  background:linear-gradient(100deg,#3a3f42,#25292b 60%,#1d2022);
+  box-shadow:inset 0 .06vw 0 rgba(255,255,255,.16),
+             0 .4vw .8vw rgba(28,36,34,.3);
+  position:relative;
+}
+.slabbox .led{
+  position:absolute; left:6%; bottom:16%; width:.3vw; height:.3vw; border-radius:50%;
+  background:#7d8a86; transition:background .5s var(--ease), box-shadow .5s var(--ease);
+}
+.obj.on .slabbox .led{background:#eaf7ef; box-shadow:0 0 .7vw rgba(220,255,235,.9)}
+
+/* Furniture. Not controllable, present because a TV floating over bare drywall with
+   nothing beneath it reads as a rendering rather than a room. */
+.furn{position:absolute; pointer-events:none}
+.furn.cube{
+  background:linear-gradient(102deg,#c7a681,#b18f68 55%,#9d7d59);
+  border-radius:.2vw;
+  box-shadow:0 .5vw 1vw rgba(28,36,34,.26), inset 0 .1vw 0 rgba(255,255,255,.25);
+}
+.furn.desk{
+  background:linear-gradient(178deg,#c9a173,#b98f60);
+  border-radius:.15vw;
+  box-shadow:0 .4vw .8vw rgba(28,36,34,.3), inset 0 .12vw 0 rgba(255,255,255,.3);
+}
+/* Monitors and chair. Not controllable, but without them the desk wall is a bare
+   receding plane and the perspective has nothing to read against, which is exactly
+   why the first attempt looked flat. */
+.furn.mon{
+  background:linear-gradient(150deg,#2a2f31,#191d1f);
+  border-radius:.16vw;
+  box-shadow:0 .3vw .6vw rgba(28,36,34,.3), inset 0 0 0 .06vw rgba(255,255,255,.1);
+}
+.furn.chair{
+  background:linear-gradient(160deg,#2c2f31,#17191b);
+  border-radius:34% 34% 12% 12% / 22% 22% 8% 8%;
+  box-shadow:0 .5vw 1vw rgba(28,36,34,.34);
+}
+
+/* ---------------- the doorway ----------------
+   North-east corner, beside the Dyson, per the floor plan. A lit hallway beyond it,
+   because in every photograph of this room that is what is actually there, and a dark
+   rectangle would read as a hole rather than as a door. */
+.furn.door{
+  background:linear-gradient(184deg,#6a5c46,#4a3f30);
+  border:.42vw solid #fbfbf8;
+  border-bottom:0;
+  border-radius:.1vw .1vw 0 0;
+  box-shadow:inset 0 .4vw 1.4vw rgba(0,0,0,.55),
+             0 0 0 .08vw rgba(120,126,118,.4),
+             .3vw 0 1vw rgba(255,238,205,.16);
+}
+
+/* ---------------- the foot of the bed ----------------
+   The bed sits in the middle of the room, so from this corner it crosses the bottom of
+   the frame. It is the single cheapest thing that turns two walls and a floor into a
+   place: something is between you and the far wall. It sits well forward on z so the
+   lean slides it against everything else. */
+#bed{
+  position:absolute; left:6%; right:-26%; bottom:-10%;
+  height:15vw; pointer-events:none;
+  transform:translateZ(20vw) rotateX(6deg);
+  /* Soft and asymmetric on purpose. The first version was a hard white rectangle across
+     the bottom third and read as a countertop; bedding has no straight edges. */
+  border-radius:46% 34% 0 0 / 30% 22% 0 0;
+  background:
+    radial-gradient(70% 120% at 30% 0%, rgba(255,255,255,.85), transparent 62%),
+    linear-gradient(172deg,#efece4,#e2ded4 52%,#cfcabd);
+  box-shadow:0 -.5vw 3vw rgba(28,36,34,.20);
+  filter:blur(.14vw);
+}
+
+/* ---------------- the page dots ----------------
+   Two pages, so the affordance has to exist, but it is a wall and not an onboarding
+   flow. Two small marks low and centre, and nothing else. */
+#dots{
+  position:fixed; left:0; right:0; bottom:1.1vh; z-index:40;
+  display:flex; justify-content:center; gap:.5rem; pointer-events:none;
+}
+#dots i{
+  width:.45rem; height:.45rem; border-radius:50%;
+  background:rgba(30,40,38,.28); transition:background .3s var(--ease);
+}
+#dots i.on{background:rgba(30,40,38,.62)}
+body.idle #dots{opacity:0; transition:opacity .7s var(--ease)}
+
+/* ---------------- an object's controls ----------------
+   Tapping a thing in the room opens the same panel a wall piece opens, because they
+   are the same gesture on the same surface and should not feel like two apps. The
+   buttons are large because this is a wall panel operated standing up, at arm's
+   length, often in the dark. */
+.keys{display:grid; grid-template-columns:repeat(2, 1fr); gap:.5rem}
+.keys button{
+  padding:1rem .6rem; border:3px solid #000; background:#fff;
+  font:700 .95rem Helvetica,Arial,sans-serif; cursor:pointer;
+  transition:background .12s var(--ease), color .12s var(--ease);
+}
+.keys button:active{background:var(--pink); color:#fff; border-color:var(--pink)}
+.keys button.wide{grid-column:1 / -1}
+.keys button.dead{opacity:.4; cursor:default}
+.ctlnote{
+  font-size:.82rem; line-height:1.5; color:#444; margin:1rem 0 0;
+  border-left:3px solid var(--pink); padding-left:.7rem;
+}
+
 @media (prefers-reduced-motion: reduce){
   *{transition-duration:.01ms !important}
 }
@@ -522,8 +899,19 @@ body.idle #wall::after{opacity:.5}
 
 <div id="stage"><div id="scene">
   <div id="wall"></div>
-  <div id="plane"></div>
+  <div id="pages">
+    <div class="page" id="page-wall" style="--i:0"><div id="plane"></div></div>
+    <div class="page" id="page-room" style="--i:1">
+      <div id="room">
+        <div class="surface" id="nearWall"></div>
+        <div class="surface" id="farWall"></div>
+        <div id="bed"></div>
+      </div>
+    </div>
+  </div>
 </div></div>
+
+<div id="dots"><i class="on"></i><i></i></div>
 
 <div id="story" aria-hidden="true">
   <div id="storyTop">
@@ -568,10 +956,28 @@ body.idle #wall::after{opacity:.5}
     <button id="setPurge" style="width:100%;padding:.6rem;margin-top:.5rem;border:2px solid #000;
             background:#fff;cursor:pointer;font-size:.85rem">Force update from the server</button>
   </div>
+  <div class="row">
+    <label>Bridge address</label>
+    <p class="hint" style="margin:0 0 .4rem">The Pi. Leave empty and the room page still
+      works, it just does not move anything in the room.</p>
+    <input type="text" id="setBridge" placeholder="https://wall.local:8443"
+           style="width:100%;padding:.5rem;border:2px solid #000;font:inherit">
+    <p class="hint" id="bridgeState" style="margin:.4rem 0 0">Not set.</p>
+  </div>
   <div class="go">
     <button id="setReset">Reset</button>
     <button id="setPreview">Preview idle</button>
     <button class="primary" id="setDone">Done</button>
+  </div>
+</div>
+
+<div class="panel" id="control">
+  <h2 id="ctlName"></h2>
+  <p class="hint" id="ctlSub"></p>
+  <div class="keys" id="ctlKeys"></div>
+  <p class="ctlnote" id="ctlNote"></p>
+  <div class="go">
+    <button class="primary" id="ctlDone">Done</button>
   </div>
 </div>
 
@@ -873,6 +1279,7 @@ const CHART_NAME = { grandma:'grandma', dad:'dad', mum:'mum', sister:'sister', d
 /* ====================== small helpers ====================== */
 
 const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
 const el = (t, cls, html) => {
   const n = document.createElement(t);
   if (cls) n.className = cls;
@@ -887,7 +1294,7 @@ const byKey = k => PIECES.find(p => p.key === k);
 
 /* ====================== settings ====================== */
 
-const DEFAULTS = { wall:'#c6d1cf', dim:34, idleMin:15 };
+const DEFAULTS = { wall:'#c6d1cf', dim:34, idleMin:15, bridge:'' };
 let cfg = Object.assign({}, DEFAULTS);
 
 function loadCfg(){
@@ -1443,7 +1850,13 @@ function armLongPress(e){
   /* Only on bare wall, so it can never be reached by mashing a picture. #plane covers the
      whole panel above #wall, so in practice that is the usual target; #stage and #scene
      are here too because a tilt can put either of them under the finger. */
-  const bare = ['wall', 'plane', 'stage', 'scene', 'dim'].includes(e.target.id);
+  /* The pager broke this once already. #page-wall sits between the drywall and the
+     finger, so testing only for the old five ids meant the long press could never
+     arm again once pages existed. Anything structural counts as bare wall; only an
+     actual object does not. */
+  const id = e.target.id || '';
+  const bare = ['wall', 'plane', 'stage', 'scene', 'dim', 'pages', 'room',
+                'farWall', 'nearWall'].includes(id) || id.startsWith('page-');
   if (!bare) return;
   pressFrom = {x: e.clientX, y: e.clientY};
   clearTimeout(pressTimer);
@@ -1469,10 +1882,42 @@ function openSettings(){
   $('#setDimVal').textContent = cfg.dim + '%';
   $('#setIdle').value = cfg.idleMin;
   $('#setIdleVal').textContent = cfg.idleMin + ' min';
+  $('#setBridge').value = cfg.bridge || '';
+  showBridgeState();
   markSwatch();
   $('#settings').classList.add('on');
   $('#scrim').classList.add('on');
 }
+
+/* Checked rather than assumed. A wrong address is the single most likely thing to be
+   wrong about this whole install, and a room page whose buttons quietly do nothing is
+   indistinguishable from one that is broken. */
+function showBridgeState(msg){
+  const el = $('#bridgeState');
+  if (msg){ el.textContent = msg; return; }
+  el.textContent = cfg.bridge ? 'Set. Tap Done to test it.' : 'Not set.';
+}
+
+async function testBridge(){
+  if (!cfg.bridge){ showBridgeState('Not set.'); return; }
+  showBridgeState('Checking…');
+  try {
+    const r = await fetch(cfg.bridge.replace(/\/$/, '') + '/health');
+    const d = await r.json();
+    bridgeUp = true;
+    showBridgeState('Reachable. ' + ((d.devices || []).join(', ') || 'no devices configured'));
+  } catch (e) {
+    bridgeUp = false;
+    /* Naming the two real causes, because "failed" sends you to the wrong place. */
+    showBridgeState('No answer. Either the Pi is off, or its certificate is not trusted '
+                  + 'by this iPad yet.');
+  }
+}
+
+$('#setBridge').addEventListener('input', e => {
+  cfg.bridge = e.target.value.trim();
+  showBridgeState();
+});
 function closeSettings(){
   $('#settings').classList.remove('on');
   $('#scrim').classList.remove('on');
@@ -1528,8 +1973,11 @@ $('#setPreview').addEventListener('click', () => {
 $('#setReset').addEventListener('click', () => {
   cfg = Object.assign({}, DEFAULTS); applyCfg(); openSettings();
 });
-$('#setDone').addEventListener('click', closeSettings);
-$('#scrim').addEventListener('click', closeSettings);
+$('#setDone').addEventListener('click', () => { testBridge(); closeSettings(); });
+$('#scrim').addEventListener('click', () => {
+  if ($('#control').classList.contains('on')) return closeControl();
+  closeSettings();
+});
 
 /* ====================== offline ====================== */
 
@@ -1596,9 +2044,424 @@ $('#setCache').addEventListener('click', () => {
   sw.postMessage({type:'cache-clips'});
 });
 
+/* ====================== the room ======================
+
+   Everything here is in INCHES, for the same reason PIECES is: it is the only way two
+   objects can be checked against each other. A 41in air purifier next to a 48in
+   television is a fact you can verify by standing in the room; "some fraction of the
+   panel" is not.
+
+   ROOM_IN is how much of the far wall the panel shows. Raise it and the whole room
+   moves away from you without distorting, exactly like WALL_IN.
+
+   These numbers are a first pass off four badly-lit phone photos. The TV size, the
+   room width and the mount height are the three that most want measuring; everything
+   else hangs off them and stays in proportion when they change. */
+const ROOM_IN   = 144;   // how many inches of room the panel is across
+const CEIL_IN   = 96;    // 8ft ceiling
+const CORNER_IN = 46;    // where the corner falls, in inches from the panel's left edge
+const NEAR_IN   = 96;    // how much of the desk wall is drawn
+const BLEED_IN  = 18;    // how far each surface runs past the frame, so a tilt never
+                         // swings a bare edge into shot
+const FLOOR_IN  = 12;    // the floor line, in inches above the bottom of the panel.
+                         // Enough that there is visible floor under the furniture; at 3
+                         // the objects sat on the frame edge and the room read as an
+                         // elevation drawing rather than as somewhere you could stand.
+
+const IN  = i => i * 100 / ROOM_IN;                  // inches -> vw, as a number
+const rvw = i => IN(i).toFixed(4) + 'vw';
+
+/* Every object is placed by the height of its bottom edge above the floor, in inches.
+   One number, physically checkable with a tape measure, for a television and a plug
+   socket alike. The earlier version had frames hung from the ceiling and everything
+   else standing on the floor, which meant the two halves of the room moved apart
+   whenever the ceiling height changed. */
+
+const ROOM = [
+  /* ---------------- the far wall: what you look at ---------------- */
+  {
+    key:'light', surface:'far', kind:'ring', device:'light',
+    xIn:8, bIn:66, wIn:19,         // Karelia 19in ring, hung off a 96in ceiling
+    name:'Ceiling light',
+    sub:'House of Hampton Karelia, 19in',
+    note:'Tuya, so it is driven locally over the LAN rather than through the app that '
+       + 'came with it. That is the difference between a light that responds and a '
+       + 'light that phones China first.',
+    on:false,
+    controls:[
+      {label:'Light', act:'toggle'},
+      {label:'Fan', act:'fan'},
+      {label:'Warmer', act:'warm'},
+      {label:'Cooler', act:'cool'},
+    ],
+  },
+  {
+    key:'strip', surface:'far', kind:'strip', device:'strip',
+    /* Behind the television, which is where a bias light belongs: it lifts the wall
+       around the panel and stops the screen being the only lit thing in a dark room. */
+    xIn:26, bIn:45, wIn:48.4,
+    name:'Bias light',
+    sub:'WS2812B, 300 pixels, driven by WLED',
+    note:'The ESP32 runs WLED and answers on the LAN, so this one needs no bridge and '
+       + 'no account. It is the only device here that is genuinely yours.',
+    on:true, glow:'#4f9dff',
+    controls:[
+      {label:'On / off', act:'toggle'},
+      {label:'Warm', act:'warm'},
+      {label:'Cyan', act:'cyan'},
+      {label:'Pink', act:'pink'},
+    ],
+  },
+  {
+    key:'tv', surface:'far', kind:'tv', device:'tv',
+    /* 55in class: 48.4 x 27.9in of panel. Mounted with its centre at 58in off the
+       floor, so its bottom edge is 44in up. Both of those are worth measuring. */
+    xIn:26, bIn:44, wIn:48.4, ratio:1.777,
+    name:'Samsung',
+    sub:'55in, wall mounted',
+    note:'Reached over its WebSocket API through the Pi. Safari cannot talk to it '
+       + 'directly: the TV serves wss with a self-signed certificate, and there is no '
+       + 'way to accept a certificate exception for a WebSocket.',
+    on:false,
+    controls:[
+      {label:'On / off', act:'power'},
+      {label:'Mute', act:'mute'},
+      {label:'Quieter', act:'volume_down'},
+      {label:'Louder', act:'volume_up'},
+      {label:'Apple TV', act:'hdmi1'},
+      {label:'Source', act:'source'},
+    ],
+  },
+  {
+    key:'appletv', surface:'far', kind:'box', device:'appletv',
+    /* 3.66in square, on the 19.2in cube below the TV. */
+    xIn:56, bIn:19.2, wIn:3.66, ratio:3.05,
+    name:'Apple TV',
+    sub:'4K, on the cube',
+    note:'Speaks Apple’s own Companion protocol with a pairing handshake. No browser '
+       + 'has ever been able to reach it, which is most of why the Pi exists.',
+    on:false,
+    controls:[
+      {label:'Menu', act:'menu'},
+      {label:'Home', act:'home'},
+      {label:'Play / pause', act:'play_pause'},
+      {label:'Open remote', act:'remote'},
+    ],
+  },
+  {
+    key:'console', surface:'far', kind:'box', device:null,
+    /* Added since the photograph. Sizes are a placeholder until Saturday. */
+    xIn:22, bIn:0, wIn:15, ratio:2.4,
+    name:'Console',
+    sub:'under the TV',
+    note:'Here so the shelf is not empty. Tell me what it is and whether it should do '
+       + 'anything and I will wire it.',
+    on:false, controls:[],
+  },
+  {
+    key:'sonos', surface:'far', kind:'box', device:'sonos',
+    xIn:63, bIn:19.2, wIn:5.1, ratio:1.3,
+    name:'Sonos',
+    sub:'on the cube',
+    note:'Sonos answers UPnP on the local network, so this is one of the few things '
+       + 'here that would work even with the internet unplugged.',
+    on:false,
+    controls:[
+      {label:'Play / pause', act:'play_pause'},
+      {label:'Quieter', act:'volume_down'},
+      {label:'Louder', act:'volume_up'},
+    ],
+  },
+  {
+    key:'dyson', surface:'far', kind:'dyson', device:'dyson',
+    /* TP07: 41.02in tall, 8.07in across. These are the manufacturer's figures, so this
+       is the one object on the page already at exactly the right size. */
+    xIn:74, bIn:0, wIn:8.07,
+    name:'Dyson',
+    sub:'TP07 purifying fan',
+    note:'Talks MQTT on port 1883 on the LAN once it has been paired, which means real '
+       + 'local control and real sensor readings rather than a cloud round trip.',
+    on:false,
+    controls:[
+      {label:'On / off', act:'toggle'},
+      {label:'Slower', act:'down'},
+      {label:'Faster', act:'up'},
+      {label:'Oscillate', act:'oscillate'},
+    ],
+  },
+
+  /* ---------------- the near wall: the desk, running away to your left ---------------- */
+  {
+    key:'pc', surface:'near', kind:'tower', device:'pcs',
+    /* Standing on the desk, so its bottom edge is the desk height. Mid tower: about
+       18in tall and 8.3in across the front. */
+    xIn:56, bIn:29, wIn:8.3, ratio:.46,
+    name:'Gaming PC',
+    sub:'on the desk, to your left',
+    note:'Woken with a magic packet, which is a raw UDP broadcast to port 9. Browsers '
+       + 'have no UDP at all, so this is the third thing the Pi is for. It works '
+       + 'because the machine is on Ethernet; over wifi it mostly would not.',
+    on:false,
+    controls:[
+      {label:'Wake', act:'wake_desktop'},
+    ],
+  },
+];
+
+/* Furniture, in the same inches. Not tappable and not controllable: it is here because
+   a television floating over bare drywall with nothing beneath it reads as a rendering
+   rather than as a room. */
+const FURNITURE = [
+  {surface:'far',  cls:'cube',  xIn:54, bIn:0,    wIn:18,   hIn:19.2},
+  /* The doorway, north-east corner, beside the Dyson. A door is 32 x 80in, and having
+     one real opening in the wall does more for the sense of a room than any amount of
+     shading, because it is the one element with a size everybody already knows. */
+  {surface:'far',  cls:'door',  xIn:84, bIn:0,    wIn:32,   hIn:80},
+  {surface:'near', cls:'desk',  xIn:10, bIn:27.4, wIn:62,   hIn:1.8},
+  {surface:'near', cls:'mon',   xIn:24, bIn:33,   wIn:23.5, hIn:13.5},
+  {surface:'near', cls:'mon',   xIn:48, bIn:33,   wIn:23.5, hIn:13.5},
+  {surface:'near', cls:'chair', xIn:30, bIn:0,    wIn:26,   hIn:34},
+];
+
+function objBody(o){
+  const b = document.createElement('div');
+  b.className = 'body';
+
+  if (o.kind === 'tv'){
+    b.innerHTML = '<div class="tv"><div class="spill"></div>'
+                + '<div class="panel-glass" style="--ratio:' + (o.ratio || 1.777) + '">'
+                + '<div class="art"></div><div class="sheen"></div></div></div>';
+  } else if (o.kind === 'dyson'){
+    b.innerHTML = '<div class="dyson"><div class="loop"><div class="flow"></div></div>'
+                + '<div class="base"></div></div>';
+  } else if (o.kind === 'ring'){
+    b.innerHTML = '<div class="ring"></div>';
+  } else if (o.kind === 'strip'){
+    b.innerHTML = '<div class="strip"><div class="wash"></div><div class="line"></div></div>';
+  } else if (o.kind === 'tower'){
+    b.innerHTML = '<div class="tower"><div class="case" style="--ratio:' + (o.ratio || .46)
+                + '"><div class="mesh"></div><div class="glow"></div>'
+                + '<div class="accent"></div></div></div>';
+  } else {
+    b.innerHTML = '<div class="slabbox" style="--ratio:' + (o.ratio || 2.6) + '">'
+                + '<div class="led"></div></div>';
+  }
+  return b;
+}
+
+/* An object's photograph, when there is one, replaces the drawn placeholder entirely
+   rather than sitting inside it. Same decision as the two photographed frames on the
+   wall page: a drawn bezel around a photographed bezel reads as two televisions. */
+function buildObj(o){
+  const el = document.createElement('div');
+  el.className = 'obj ' + (o.bIn != null ? 'stood' : 'hung');
+  el.dataset.key = o.key;
+  el.style.setProperty('--x', rvw(o.xIn));
+  el.style.setProperty('--w', rvw(o.wIn));
+
+  el.style.bottom = rvw(BLEED_IN + FLOOR_IN + o.bIn);
+
+  if (o.glow) el.style.setProperty('--glow', o.glow);
+  if (o.on) el.classList.add('on');
+
+  if (o.art){
+    const img = document.createElement('img');
+    img.src = o.art; img.alt = o.name; img.decoding = 'async';
+    /* If the photograph is missing the drawn placeholder comes back, so a bad path can
+       never leave a hole in the room. */
+    img.addEventListener('error', () => img.replaceWith(objBody(o)));
+    const wrap = document.createElement('div');
+    wrap.className = 'body'; wrap.appendChild(img);
+    el.appendChild(wrap);
+  } else {
+    el.appendChild(objBody(o));
+  }
+
+  el.addEventListener('click', () => { if (!swallowClick) openControl(o.key); });
+  return el;
+}
+
+function buildRoom(){
+  const far = $('#farWall'), near = $('#nearWall');
+  const root = $('#room').style;
+  root.setProperty('--cornerX', rvw(CORNER_IN));
+  root.setProperty('--nearW',   rvw(NEAR_IN));
+  root.setProperty('--bleed',   rvw(BLEED_IN));
+
+  /* The floor and the baseboard belong to each surface rather than to the room, so
+     that the near wall's floor is foreshortened by the same rotation as the near wall
+     and the two meet at the corner instead of crossing it. */
+  [far, near].forEach(s => {
+    const b = document.createElement('div');
+    b.className = 'base';
+    b.style.setProperty('--baseB', rvw(BLEED_IN + FLOOR_IN));
+    const f = document.createElement('div');
+    f.className = 'floor';
+    f.style.setProperty('--floorY', 'calc(100% - ' + rvw(BLEED_IN + FLOOR_IN) + ')');
+    f.style.setProperty('--depth', rvw(ROOM_IN));
+    s.appendChild(f); s.appendChild(b);
+  });
+
+  FURNITURE.forEach(f => {
+    const d = document.createElement('div');
+    d.className = 'furn ' + f.cls;
+    d.style.left   = rvw(f.xIn);
+    d.style.width  = rvw(f.wIn);
+    d.style.height = rvw(f.hIn);
+    d.style.bottom = rvw(BLEED_IN + FLOOR_IN + f.bIn);
+    (f.surface === 'near' ? near : far).appendChild(d);
+  });
+  ROOM.forEach(o => (o.surface === 'near' ? near : far).appendChild(buildObj(o)));
+}
+
+function setObjState(key, on){
+  const o = ROOM.find(x => x.key === key);
+  if (!o) return;
+  o.on = on;
+  const el = $('#room [data-key="' + key + '"]');
+  if (el) el.classList.toggle('on', on);
+}
+
+/* ---------------- talking to the bridge ----------------
+   The iPad cannot reach any of these devices itself. Apple TV speaks a proprietary
+   protocol, the Samsung serves wss with a self-signed certificate that Safari will
+   not accept and offers no way to click past, and Wake-on-LAN is raw UDP which no
+   browser has. So a Pi holds those connections and this posts JSON to it.
+
+   It has to be https. The wall is served from GitHub Pages over https, and a secure
+   page may not call an insecure one; there is no flag for that.
+
+   Nothing here blocks the interface. The button changes state immediately and is put
+   back if the bridge disagrees, because a wall panel that waits three seconds for a
+   Pi before acknowledging a press feels broken even when it is working. */
+let bridgeUp = null;
+
+async function send(device, action){
+  if (!cfg.bridge || !device) return false;
+  try {
+    const r = await fetch(cfg.bridge.replace(/\/$/, '') + '/cmd', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({device, action}),
+    });
+    bridgeUp = r.ok;
+    return r.ok;
+  } catch (e) {
+    bridgeUp = false;
+    return false;
+  }
+}
+
+/* ---------------- an object's controls ---------------- */
+
+let ctlKey = null;
+
+function openControl(key){
+  const o = ROOM.find(x => x.key === key);
+  if (!o) return;
+  ctlKey = key;
+  $('#ctlName').textContent = o.name;
+  $('#ctlSub').textContent = o.sub || '';
+  $('#ctlNote').innerHTML = o.note || '';
+
+  const box = $('#ctlKeys');
+  box.textContent = '';
+  if (!o.controls.length){
+    const b = document.createElement('button');
+    b.className = 'wide dead';
+    b.textContent = 'Nothing wired to this yet';
+    box.appendChild(b);
+  }
+  o.controls.forEach(c => {
+    const b = document.createElement('button');
+    b.textContent = c.label;
+    if (o.controls.length % 2 === 1 && c === o.controls[o.controls.length - 1]){
+      b.className = 'wide';                       // an odd last button spans, never orphans
+    }
+    b.addEventListener('click', () => runControl(o, c.act));
+    box.appendChild(b);
+  });
+
+  $('#scrim').classList.add('on');
+  $('#control').classList.add('on');
+  resetIdle();
+}
+
+/* The state a control produces locally, so the room responds to a press whether or not
+   there is a Pi on the other end. With a bridge configured this is an optimistic update
+   that a failed call reverses; with no bridge it is the whole behaviour, which makes the
+   page fully demonstrable before any hardware is wired. */
+function localEffect(o, act){
+  if (act === 'toggle' || act === 'power') return !o.on;
+  if (['warm','cool','cyan','pink','up','down','oscillate','fan'].includes(act)) return true;
+  if (act === 'wake_desktop') return true;
+  return o.on;
+}
+
+const GLOWS = {warm:'#ffb46b', cyan:'#3fe0ff', pink:'#ff2e88'};
+
+async function runControl(o, act){
+  const before = o.on;
+  const after = localEffect(o, act);
+  if (GLOWS[act]){
+    o.glow = GLOWS[act];
+    const el = $('#room [data-key="' + o.key + '"]');
+    if (el) el.style.setProperty('--glow', o.glow);
+  }
+  setObjState(o.key, after);
+
+  if (!cfg.bridge || !o.device) return;
+  const ok = await send(o.device, act);
+  if (!ok) setObjState(o.key, before);           // the room did not actually change
+}
+
+function closeControl(){
+  ctlKey = null;
+  $('#control').classList.remove('on');
+  $('#scrim').classList.remove('on');
+}
+
+$('#ctlDone').addEventListener('click', closeControl);
+
+/* ====================== the pager ====================== */
+
+const pagesEl = $('#pages');
+let page = 0;
+
+function setPage(n){
+  page = Math.max(0, Math.min(1, n));
+  pagesEl.style.setProperty('--page', page);
+  $$('#dots i').forEach((d, i) => d.classList.toggle('on', i === page));
+  resetIdle();
+}
+
+/* A page turn and a lean are the same gesture until they are not. The rule: a drag that
+   is mostly horizontal and travels more than a third of the panel is a page turn;
+   anything else was a look. Deciding on release rather than during means the lean still
+   animates under the finger and the page only commits once. */
+const PAGE_PX = () => innerWidth / 3;
+let swipeFrom = null;
+
+stage.addEventListener('pointerdown', e => {
+  if (document.body.classList.contains('story-open')) return;
+  if (idle) return;
+  swipeFrom = {x:e.clientX, y:e.clientY};
+});
+addEventListener('pointerup', e => {
+  if (!swipeFrom) return;
+  const dx = e.clientX - swipeFrom.x, dy = e.clientY - swipeFrom.y;
+  swipeFrom = null;
+  if (Math.abs(dx) < PAGE_PX()) return;
+  if (Math.abs(dx) < Math.abs(dy) * 1.4) return;    // that was a vertical look
+  setPage(page + (dx < 0 ? 1 : -1));
+});
+addEventListener('pointercancel', () => { swipeFrom = null; });
+
 /* ====================== go ====================== */
 
 loadCfg();
+buildRoom();
+setPage(0);
 resetIdle();
 </script>
 </body>
