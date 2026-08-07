@@ -98,6 +98,43 @@ def match_white(im, target=245):
     return Image.fromarray(np.clip(lifted, 0, 255).astype(np.uint8))
 
 
+def neutralise(im, lo=150):
+    """Take the light's colour cast off a photograph, using the painted frame as white.
+
+    The reference is the frame, not the tarp, and that distinction is the whole function.
+
+    Measured on the source: the painted frame reads (244,249,253) and the tarp reads
+    (234,240,250). The frame is white gloss wood, so its 10 points of blue over red are
+    the light and nothing else. But the tarp is a further 7 points bluer again, under
+    exactly the same light and eighteen inches away, which is not a cast: polytarp is
+    loaded with optical brightener, so it really is blue-white. That is a property of the
+    object.
+
+    Balancing on the tarp therefore removed something true and made the white frame yellow
+    into the bargain. Balancing on the frame removes the light and leaves the tarp looking
+    like the slightly blue-white plastic it actually is.
+
+    Gains are normalised so the largest is exactly 1, meaning channels are only ever pulled
+    down. Boosting one to compensate clipped the moulding and turned it yellow at the
+    highlights.
+    """
+    a = np.asarray(im).astype(float)
+    h, w, _ = a.shape
+    band = np.concatenate([a[:int(h * .035)].reshape(-1, 3), a[-int(h * .035):].reshape(-1, 3),
+                           a[:, :int(w * .028)].reshape(-1, 3), a[:, -int(w * .028):].reshape(-1, 3)])
+    band = band[band.min(axis=1) > lo]
+    if len(band) < 500:
+        print("    (no white frame to reference, left as shot)")
+        return im
+    ref = band.mean(axis=0)
+    gain = ref.mean() / ref
+    gain = gain / gain.max()
+    out = np.clip(a * gain, 0, 255)
+    print(f"    frame ({ref[0]:.0f},{ref[1]:.0f},{ref[2]:.0f}) is the white reference, "
+          f"gains ({gain[0]:.3f},{gain[1]:.3f},{gain[2]:.3f})")
+    return Image.fromarray(out.astype(np.uint8))
+
+
 def photos():
     print("books")
     for name, f in BOOKS:
@@ -110,7 +147,8 @@ def photos():
     # two frames.
     save(match_white(trim_to_frame(SRC / "81859b66-IMG_0142.jpeg", inset=10)),
          "cards.jpg", 1600)
-    save(trim_to_frame(SRC / "3d0e020c-IMG_0152.jpeg", thresh=100, inset=6), "luton.jpg", 1600)
+    save(neutralise(trim_to_frame(SRC / "3d0e020c-IMG_0152.jpeg", thresh=100, inset=6)),
+         "luton.jpg", 1600)
 
 
 # --------------------------------------------------------------------------- QR
