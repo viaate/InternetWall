@@ -13,7 +13,7 @@
      A wall-mounted iPad that pretends to be part of the wall next to it.
 
      Runs on an iPad Air 4 (A14, 1180x820pt landscape). Built and tested on an
-     iPad Pro 11 M5, which is 1210x834 — under 1% different, so there is one
+     iPad Pro 11 M5, which is 1210x834. Under 1% different, so there is one
      fluid layout and no device branching anywhere in here.
 
      Two rules this file never breaks:
@@ -39,7 +39,7 @@
      Sampled from the room photo and white-balanced against the ceiling and
      the door trim, which read as neutral. Three separate patches of wall all
      landed within one step of this, so it is a real measurement rather than
-     a guess — but it is a measurement off a warm-lit phone photo, so treat it
+     a guess. It is still a measurement off a warm-lit phone photo, so treat it
      as a good starting point and not gospel. The settings panel (long-press
      bare wall) can nudge it live, and whatever you set there wins.
      -------------------------------------------------------------------- */
@@ -150,7 +150,7 @@ button{font:inherit;color:inherit;margin:0}
 
 /* Deep box frame for the card frame and the Shrek print: shallow mat, print sits
    further back, so the moulding is thinner and the opening shadow is stronger.
-   Named .deep and not .box on purpose — .box is the story panel's callout, and
+   Named .deep and not .box on purpose, because .box is the story panel's callout and
    when this was called .box the card frame inherited a 3px black border and a
    pink drop shadow from it. */
 .piece.deep .mat{background:linear-gradient(160deg,#fcfcf9,#f2f0e8)}
@@ -188,14 +188,17 @@ button{font:inherit;color:inherit;margin:0}
     .12vw .5vw .9vw rgba(30,36,30,.3);
 }
 .ledge .goods{position:relative}
+/* The slab is 4.62in tall against an 8.7in book, so it stands at 0.53 of the shelf's
+   book height. It was eyeballed at .66 first, which made it taller than a real slab and
+   left it looking like a small book rather than a cased card. */
 .ledge .goods img.front{
   position:absolute; left:50%; bottom:0; transform:translateX(-50%);
-  height:calc(var(--goods-h, 11vw) * .66); z-index:2;
+  height:calc(var(--goods-h, 11vw) * .53); z-index:2;
   box-shadow:0 .1vw .18vw rgba(30,36,30,.45), .1vw .4vw .8vw rgba(30,36,30,.34);
 }
 .ledge .goods .frontTodo{
   position:absolute; left:50%; bottom:0; transform:translateX(-50%); z-index:2;
-  height:calc(var(--goods-h, 11vw) * .66); aspect-ratio:.62;
+  height:calc(var(--goods-h, 11vw) * .53); aspect-ratio:.61;
   border:.2vw dashed rgba(60,66,58,.62); background:rgba(250,250,247,.94);
   display:flex; align-items:center; justify-content:center;
   font:700 clamp(8px,.72vw,12px)/1 Helvetica,Arial,sans-serif;
@@ -342,7 +345,7 @@ body.story-open #story{transform:none; visibility:visible}
 .chapter .facts b{color:#111}
 
 /* One <video> exists at a time. Eight of them alive at once is fine on the M5 and
-   is a memory problem on the A14 — exactly the class of bug the dev iPad hides.
+   is a memory problem on the A14, which is exactly the class of bug the dev iPad hides.
    Each chapter shows a plate until tapped; the element is built on demand and the
    previous one is torn down. */
 .plate{
@@ -500,11 +503,11 @@ body.idle #wall::after{opacity:.5}
     <div class="swname" id="swName"></div>
   </div>
   <div class="row">
-    <label>Idle dimming — <span class="val" id="setDimVal"></span></label>
+    <label>Idle dimming: <span class="val" id="setDimVal"></span></label>
     <input type="range" id="setDim" min="0" max="90" step="1">
   </div>
   <div class="row">
-    <label>Idle after — <span class="val" id="setIdleVal"></span></label>
+    <label>Idle after: <span class="val" id="setIdleVal"></span></label>
     <input type="range" id="setIdle" min="1" max="60" step="1">
   </div>
   <div class="row" id="offlineRow">
@@ -549,9 +552,9 @@ const PIECES = [
       'decided not to take that personally.'
     ],
     refs:[
-      {qr:'carter-meeting', b:'CarterPCs — “Great meeting you…”',
+      {qr:'carter-meeting', b:'CarterPCs: “Great meeting you…”',
        u:'youtu.be/CsOaHKlU3rU'},
-      {qr:'carter-freepcs', b:'CarterPCs — “Why I dont give fans free PCs”',
+      {qr:'carter-freepcs', b:'CarterPCs: “Why I dont give fans free PCs”',
        u:'youtu.be/7sIHuqe6-gY'}
     ]
   },
@@ -561,16 +564,15 @@ const PIECES = [
     art:'art/cards.jpg', ratio:1.77,
     stamp:'the jack pack',
     title:'Three cards, all three signed',
-    facts:'JACK MASSEY WELSH &nbsp;·&nbsp; THE WEE WEE BUSH &nbsp;·&nbsp; TRAFFIC CONE BECKY',
+    facts:'a three-opening frame, and he put a pen on every one',
     body:[
-      'The <b>Jack Pack</b> is the bundle of merch JackSucksAtLife posts out. These are three '+
-      'cards from it, and he has put a pen on all three.',
-      'Left is <b>Jack Massey Welsh</b> — 200K Milestone, Feb 2020 — signed <q>Jack sucks</q>. '+
+      'The <b>Jack Pack</b> is the bundle of merch JackSucksAtLife posts out. These are cards '+
+      'from it, in a frame that exists because enough people needed exactly this.',
+      'Left is <b>Jack Massey Welsh</b>, 200K Milestone, Feb 2020, signed <q>Jack sucks</q>. '+
       'Right is <b>Traffic Cone Becky</b>, signed <q>Becky</q> with a smiley face.',
-      'The middle one is the one that matters. <b>The Wee Wee Bush</b>, initialled JMW, and then '+
-      'written across the whole bottom of the card in his handwriting: '+
-      '<span class="mark">“Jack my grandma wants to tell you something.”</span>',
-      'That is the title of the first post. He wrote the name of the thing onto the thing.'
+      'The middle slot has changed since this photograph. The card sitting in it here is '+
+      '<b>The Wee Wee Bush</b>, and that one has gone into the slab on the shelf below, which '+
+      'is where it earned its place. <span class="mark">Something else is in the frame now.</span>'
     ]
   },
   {
@@ -610,7 +612,7 @@ const PIECES = [
     x:'2.5%', b:'14.3%', w:'28%',
     goodsH:'10.4vw',
     goods:['art/books/02-enter-the-mine.jpg',
-           'art/books/06-activity-book.jpg',
+           {src:'art/books/06-activity-book.jpg', scale:7.4/8.7},
            'art/books/05-end-of-all-things.jpg'],
     stamp:'signed first editions',
     title:'Six PopularMMOs books',
@@ -620,7 +622,7 @@ const PIECES = [
       '(2020), <b>Into the Overworld</b> (2021), <b>The End of All the Things</b> (2023), and the '+
       '<b>A Hole New Activity Book</b>.',
       'Signed first editions. I did not meet anybody to get these signed and I did not queue for '+
-      'them — I bought them on eBay, which I think is the honest thing to say about them.',
+      'them. I bought them on eBay, which I think is the honest thing to say about them.',
       'They are still signed. The signature does not know how it got here.'
     ]
   },
@@ -651,7 +653,7 @@ const PIECES = [
     goods:['art/books/01-hole-new-world.jpg',
            'art/books/04-into-the-overworld.jpg',
            'art/books/03-zombies-day-off.jpg'],
-    front:'art/slab.jpg',
+    front:'art/slab.png',
     stamp:'the slab',
     title:'The thing in front of the books',
     facts:'homemade &nbsp;·&nbsp; grade invented &nbsp;·&nbsp; signature real',
@@ -660,7 +662,11 @@ const PIECES = [
       'at a time. He watched every single one on his channel. Then he posted me a signed card, I '+
       'posted him a signed play button, and a card grading company refused to have anything to do '+
       'with any of it.',
-      'So I made the slab myself.'
+      'So I made the slab myself.',
+      'The card inside it is <b>The Wee Wee Bush</b>. He initialled it JMW at the top, and then '+
+      'wrote across the whole bottom of it, in his own handwriting: '+
+      '<span class="mark">“Jack my grandma wants to tell you something.”</span> That is the title '+
+      'of the very first post. He wrote the name of the thing onto the thing.'
     ],
     opensSaga:true
   }
@@ -865,11 +871,16 @@ function buildPiece(p){
     if (p.goodsH) node.style.setProperty('--goods-h', p.goodsH);
     const goods = el('div', 'goods');
 
-    (p.goods || []).forEach(src => {
+    (p.goods || []).forEach(item => {
+      /* A book is either a path, or a path plus a scale for anything that is not the
+         same trim as the rest of the shelf. */
+      const src = typeof item === 'string' ? item : item.src;
+      const scale = typeof item === 'string' ? 1 : (item.scale || 1);
       const img = el('img');
       img.src = src;
       img.alt = '';
       img.decoding = 'async';
+      if (scale !== 1) img.style.height = 'calc(var(--goods-h, 11vw) * ' + scale + ')';
       /* A cover that has not been scanned yet just is not on the shelf. A dashed box
          standing among real books looks far worse than a slightly emptier shelf. */
       img.addEventListener('error', () => img.remove());
@@ -880,7 +891,7 @@ function buildPiece(p){
       const f = el('img', 'front');
       f.src = p.front;
       f.alt = '';
-      /* This one does get a marker when it is missing — it is the slab, it is the whole
+      /* This one does get a marker when it is missing, because it is the slab and the whole
          point of that shelf, and it should not be quietly forgotten. */
       f.addEventListener('error', () => f.replaceWith(el('div', 'frontTodo', 'slab')));
       goods.appendChild(f);
@@ -960,7 +971,7 @@ function openStory(key){
       const r = el('div', 'ref');
       r.appendChild(el('div', null,
         '<b>Point your phone at these</b>' +
-        '<span style="color:#666"> — this iPad deliberately cannot leave the app.</span>'));
+        '<span style="color:#666">, because this iPad deliberately cannot leave the app.</span>'));
       p.refs.forEach(x => r.appendChild(qrBlock(x.qr, x.b, x.u)));
       prose.appendChild(r);
     }
@@ -993,7 +1004,7 @@ function buildSaga(p){
     '<p>The one on the shelf is not one of theirs. PSA will not authenticate a signature unless ' +
     'the signer is on their list of people worth authenticating, and Jack, staggeringly, is not ' +
     'on that list. So the case is homemade, the grade is invented, the serial number means ' +
-    'nothing at all, and the signature is completely real — which I would argue is the only part ' +
+    'nothing at all, and the signature is completely real, which I would argue is the only part ' +
     'that was ever going to matter.</p>'));
   intro.appendChild(el('div', 'box blue',
     '<h3>Wait, who is Jack?</h3>' +
@@ -1103,7 +1114,7 @@ function missing(what){
 function videoPlate(ch){
   const plate = el('div', 'plate');
   plate.appendChild(el('span', 'tri'));
-  plate.appendChild(el('span', 'cap', esc(ch.short) + ' — tap to play, out loud'));
+  plate.appendChild(el('span', 'cap', esc(ch.short) + ', tap to play, out loud'));
   plate.addEventListener('click', () => {
     killVideo();
     const holder = el('div', 'frameV');
@@ -1308,7 +1319,7 @@ $('#scrim').addEventListener('click', closeSettings);
 /* ====================== offline ====================== */
 
 /* iOS only runs a service worker over HTTPS or on localhost. Served off a PC on the LAN
-   over plain http it simply never registers, and everything else still works — so this
+   over plain http it simply never registers, and everything else still works, so this
    reports what is actually true rather than promising offline it cannot deliver. */
 let swReg = null;
 
@@ -1319,7 +1330,7 @@ if ('serviceWorker' in navigator){
     swReg = reg;
     offlineState('The wall and every photo are saved. Clips are saved as you play them.');
   }).catch(() => {
-    offlineState('Could not register — needs https, or localhost.');
+    offlineState('Could not register. Needs https, or localhost.');
     $('#setCache').disabled = true;
   });
   navigator.serviceWorker.addEventListener('message', e => {
@@ -1329,7 +1340,7 @@ if ('serviceWorker' in navigator){
     } else if (d.type === 'cache-done'){
       offlineState('All ' + d.stored + ' clips saved. This works with the wifi off.');
       $('#setCache').disabled = false;
-      $('#setCache').textContent = 'Saved — tap to check again';
+      $('#setCache').textContent = 'Saved. Tap to check again';
     }
   });
 } else {
@@ -1338,7 +1349,7 @@ if ('serviceWorker' in navigator){
 
 $('#setCache').addEventListener('click', () => {
   const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
-  if (!sw){ offlineState('Not ready yet — reload once, then try again.'); return; }
+  if (!sw){ offlineState('Not ready yet. Reload once, then try again.'); return; }
   $('#setCache').disabled = true;
   offlineState('Starting… this is about 86MB, give it a few minutes.');
   sw.postMessage({type:'cache-clips'});

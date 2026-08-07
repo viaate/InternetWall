@@ -1,7 +1,7 @@
 /* Service worker: what actually makes "works with the wifi off" true on an iPad.
 
    Without this the app is only offline in the sense that it makes no third-party
-   requests — it would still need whatever machine is serving it to be switched on,
+   requests. It would still need whatever machine is serving it to be switched on,
    which defeats the point of a thing bolted to a wall.
 
    Two tiers, because the split matters:
@@ -16,7 +16,7 @@
 
    iOS only runs service workers over HTTPS or on localhost. Served from a PC over
    plain http on the LAN this never registers, and the app still works exactly as
-   before — just not offline. index.html handles that case rather than assuming.
+   before, just not offline. index.html handles that case rather than assuming.
 */
 
 const VERSION = 'wall-v1';
@@ -31,6 +31,8 @@ const SHELL = [
   './art/books/03-zombies-day-off.jpg',
   './art/books/04-into-the-overworld.jpg',
   './art/books/05-end-of-all-things.jpg',
+  './art/books/06-activity-book.jpg',
+  './art/slab.png',
   './art/cards.jpg',
   './art/carter.jpg',
   './art/jen.jpg',
@@ -83,7 +85,7 @@ self.addEventListener('install', event => {
     const cache = await caches.open(SHELL_CACHE);
     /* Added one at a time rather than cache.addAll(). addAll is all-or-nothing, so a
        single artifact that has not been photographed yet would 404 and throw away the
-       entire install — the app would silently never go offline because of one missing
+       entire install, and the app would silently never go offline because of one missing
        jpg. Each miss is tolerated instead. */
     await Promise.all(SHELL.map(url =>
       cache.add(new Request(url, {cache: 'reload'})).catch(() => {})
@@ -113,7 +115,7 @@ self.addEventListener('fetch', event => {
 
   if (isClip(url)) {
     /* Video is requested with a Range header. A cached 200 satisfies a range request
-       in WebKit, but only if the whole response is stored — so partial (206) responses
+       in WebKit, but only if the whole response is stored, so partial (206) responses
        are deliberately never written to the cache, or seeking would break offline. */
     event.respondWith((async () => {
       const cache = await caches.open(MEDIA_CACHE);

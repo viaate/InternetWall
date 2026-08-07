@@ -57,7 +57,7 @@ def main():
         # --- the wall must never be able to navigate away -------------------
         anchors = pg.evaluate("() => document.querySelectorAll('a[href]').length")
         if anchors:
-            fails.append(f"{anchors} <a href> present — a tap could leave the kiosk")
+            fails.append(f"{anchors} <a href> present, so a tap could leave the kiosk")
         notes.append(f"anchors with href: {anchors}")
 
         # --- settings via long press on bare wall ---------------------------
@@ -136,7 +136,7 @@ def main():
         # AAC (canPlayType returns "" for both) and the clips are avc1, so every element
         # errors on load. Safari on the iPad decodes H.264 in hardware, so this is a
         # limitation of the test browser, not of the app. What is still worth asserting
-        # is the lifecycle — that opening a second clip disposes of the first.
+        # is the lifecycle: that opening a second clip disposes of the first.
         codec = pg.evaluate('''() => document.createElement('video')
             .canPlayType('video/mp4; codecs="avc1.42E01E"') || 'unsupported' ''')
         notes.append(f"test browser H.264 support: {codec}")
@@ -149,7 +149,7 @@ def main():
         live = pg.evaluate("() => document.querySelectorAll('video').length")
         notes.append(f"live <video> elements after opening two clips: {live}")
         if live > 1:
-            fails.append(f"{live} video elements alive at once — A14 memory risk")
+            fails.append(f"{live} video elements alive at once, an A14 memory risk")
 
         # Our own teardown fires `error` on the element it is disposing of. If that is
         # mistaken for a broken file, a working clip gets covered with a failure notice.
@@ -219,7 +219,7 @@ def main():
         for f in fails:
             print("  ✗ " + f)
         sys.exit(1)
-    print("PASS — all checks green")
+    print("PASS, all checks green")
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ branching anywhere.
 **Nothing navigates.** No `<a href>`, no `location` writes, no hash routing. Every view
 is a class on `<body>`. A navigation inside Guided Access is unrecoverable without
 unlocking the iPad, so references to outside things are QR codes people scan with their
-own phone — never links this iPad could follow.
+own phone, never links this iPad could follow.
 
 **Nothing is fetched.** No CDN, no web font, no analytics, no YouTube embed. The whole
 app is `index.html` plus `art/` and `slab/`.
@@ -26,7 +26,7 @@ app is `index.html` plus `art/` and `slab/`.
 
 ## Getting it onto the iPad
 
-The app being self-contained is not the same as it working with the wifi off — without
+The app being self-contained is not the same as it working with the wifi off. Without
 a service worker it would still need whatever machine is serving it to be switched on,
 which rather defeats a thing bolted to a wall. `sw.js` closes that gap.
 
@@ -34,9 +34,9 @@ which rather defeats a thing bolted to a wall. `sw.js` closes that gap.
 
 | How you serve it | Works offline? |
 |---|---|
-| GitHub Pages (HTTPS) | **yes** — this is the one to use |
+| GitHub Pages (HTTPS) | **yes**, and this is the one to use |
 | Any HTTPS host | yes |
-| A PC on the LAN over plain `http://` | no — app runs, but the PC must stay on |
+| A PC on the LAN over plain `http://` | no; the app runs, but the PC must stay on |
 
 Then, on the iPad:
 
@@ -83,19 +83,19 @@ whatever you calibrated, by itself, at dusk.
   art:'art/carter.jpg', ratio:1.25, mould:'5.2%', mat:'11%', … }
 ```
 
-`x` / `y` / `w` are percentages of the panel. **Height is never given** — it falls out
+`x` / `y` / `w` are percentages of the panel. **Height is never given.** It falls out
 of `ratio` (the artwork's own aspect) plus the mat and moulding widths, so a frame
 cannot be set to the wrong shape by hand.
 
 Frames are placed by their **top** edge (`y`). Ledges are placed by their **bottom**
 edge (`b`), so the shelf line stays where it was drilled no matter how tall whatever is
-standing on it turns out to be — swapping a placeholder for a real photo of a loaded
+standing on it turns out to be. Swapping a placeholder for a real photo of a loaded
 shelf cannot shift the shelf.
 
 Wall colour is `--wall` at the top of the CSS, currently `#c6d1cf`. That is sampled
 from the room photo and white-balanced against the ceiling and the door trim; three
 separate patches of wall agreed to within one step. It is still a measurement off a
-warm-lit phone photo, so treat it as a starting point — the settings panel has the
+warm-lit phone photo, so treat it as a starting point. The settings panel has the
 Sherwin-Williams greens-greys loaded as swatches and whatever you pick there wins.
 
 ---
@@ -110,24 +110,24 @@ python3 src/build-assets.py
 ```
 
 It trims the two photographed frames off the dark surface they were shot on by finding
-the bright region, so `cards.jpg` and `luton.jpg` need no manual cropping — drop a new
+the bright region, so `cards.jpg` and `luton.jpg` need no manual cropping. Drop a new
 photo in `src/`, point the script at it, run it.
 
 Those two are used **whole**, not dropped inside a drawn frame: a CSS moulding around a
 photographed moulding reads as two frames. Everything else sits in a frame drawn in CSS,
 which stays sharp at any size and matches the real frames rather than stock.
 
-**Still missing: `art/books/06-activity-book.jpg`** — the *A Hole New Activity Book*
+**Still missing: `art/books/06-activity-book.jpg`**, the *A Hole New Activity Book*
 cover, which goes in the middle of the left shelf. A cover that is not there simply is
 not on the shelf; a dashed box standing among real books looks far worse than a slightly
 emptier shelf.
 
-**Also missing: `art/slab.jpg`** — the slab itself, standing in front of the books on the
+**Also missing: `art/slab.jpg`**, the slab itself, standing in front of the books on the
 right. That one *does* get a visible placeholder, because it is the point of that shelf
 and should not be quietly forgotten.
 
-Note this machine has no outbound network — the egress proxy refuses every host,
-including `example.com` — so nothing can be fetched here. A square-on photo of the real
+Note this machine has no outbound network. The egress proxy refuses every host,
+including `example.com`, so nothing can be fetched here. A square-on photo of the real
 object beats a scrape anyway.
 
 ---
@@ -136,7 +136,7 @@ object beats a scrape anyway.
 
 The iPad cannot follow a link, and nobody is going to retype a timestamped YouTube URL
 off a wall. Every outbound reference is a QR code instead, generated into `art/qr/` by
-the same script from the `LINKS` table in it — so a code can never drift out of step
+the same script from the `LINKS` table in it, so a code can never drift out of step
 with the caption printed beside it.
 
 Two details that matter:
@@ -163,7 +163,7 @@ Two things the local browser cannot check, both of which need the actual iPad:
 
 - **Video.** The bundled Chromium ships without H.264 or AAC, and the clips are `avc1`,
   so every clip errors on load here. Safari decodes H.264 in hardware.
-- **Memory.** Only one `<video>` is ever alive — built on tap, torn down on close.
+- **Memory.** Only one `<video>` is ever alive: built on tap, torn down on close.
   Eight at once is fine on the M5 and a problem on the A14, which is exactly the class
   of bug the development iPad hides.
 

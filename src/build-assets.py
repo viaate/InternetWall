@@ -65,9 +65,37 @@ BOOKS = [
     ("books/03-zombies-day-off.jpg", "1e259ab3-IMG_0149.jpeg"),
     ("books/04-into-the-overworld.jpg", "3133c2ee-IMG_0147.webp"),
     ("books/05-end-of-all-things.jpg",  "8792ab97-IMG_0148.webp"),
-    # 06 is the A Hole New Activity Book. No scan for it yet; the shelf renders
-    # whatever is present, so it simply is not there until one arrives.
+    ("books/06-activity-book.jpg",      "b9964736-IMG_0155.webp"),
 ]
+
+# The activity book is a smaller trim than the graphic novels: 5.4 x 7.4in against
+# 6.7 x 8.7in. On a shelf that is the difference between a matched set and one book
+# that is obviously the wrong size, so index.html scales it by height ratio.
+ACTIVITY_SCALE = round(7.4 / 8.7, 3)
+
+
+def match_white(im, target=245):
+    """Lift a photograph so its white furniture matches the other frames on the wall.
+
+    The card frame was shot in dimmer light than the Luton one: its moulding sits at
+    200,200,201 against 239,247,254, which on a light wall reads as grey plastic next to
+    white. Scaling to put the moulding's 90th percentile on `target` fixes the whole
+    exposure rather than just the border, with a soft shoulder so the bright parts of
+    the cards do not clip to flat white.
+    """
+    a = np.asarray(im).astype(float)
+    h, w, _ = a.shape
+    band = np.concatenate([a[:int(h * .05)].reshape(-1, 3), a[-int(h * .05):].reshape(-1, 3),
+                           a[:, :int(w * .04)].reshape(-1, 3), a[:, -int(w * .04):].reshape(-1, 3)])
+    current = float(np.percentile(band, 90))
+    gain = target / current
+    print(f"    moulding p90 {current:.0f} -> {target}, gain {gain:.3f}")
+    lifted = a * gain
+    # Soft shoulder above 235 so specular highlights roll off instead of clipping flat.
+    knee = 235.0
+    over = lifted > knee
+    lifted[over] = knee + (255 - knee) * np.tanh((lifted[over] - knee) / (255 - knee))
+    return Image.fromarray(np.clip(lifted, 0, 255).astype(np.uint8))
 
 
 def photos():
@@ -78,9 +106,10 @@ def photos():
     print("shelf and framed pieces")
     save(Image.open(SRC / "05e52816-IMG_0146.jpeg"), "shelf.jpg", 1400, quality=92)
     # These two are photographs of the real frames, so they are used whole rather than
-    # dropped inside a CSS frame — a drawn moulding around a photographed one reads as
+    # dropped inside a CSS frame, because a drawn moulding around a photographed one reads as
     # two frames.
-    save(trim_to_frame(SRC / "81859b66-IMG_0142.jpeg", inset=10), "cards.jpg", 1600)
+    save(match_white(trim_to_frame(SRC / "81859b66-IMG_0142.jpeg", inset=10)),
+         "cards.jpg", 1600)
     save(trim_to_frame(SRC / "3d0e020c-IMG_0152.jpeg", thresh=100, inset=6), "luton.jpg", 1600)
 
 
