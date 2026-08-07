@@ -124,149 +124,289 @@ button{font:inherit;color:inherit;margin:0}
     radial-gradient(95% 70% at 88% 96%, rgba(0,0,0,.06), transparent 60%);
 }
 
+#pages{position:absolute; inset:0; transform-style:preserve-3d}
+.page{
+  position:absolute; inset:0;
+  transform:translateX(calc((var(--i) - var(--page, 0)) * 100%));
+  transition:transform .44s var(--ease);
+  transform-style:preserve-3d;
+}
+/* Only the page in view takes touches, or the one off-screen would swallow taps. */
+.page{visibility:hidden}
+.page.here{visibility:visible}
 #plane{position:absolute; inset:0; transform-style:preserve-3d}
 
-.piece{
-  position:absolute;
-  left:var(--x); width:var(--w);
-  transition:transform .28s var(--ease), opacity .7s var(--ease);
-  transform:translateZ(var(--z, 1.4vw));
+#dots{
+  position:fixed; left:50%; bottom:1.1vw; transform:translateX(-50%);
+  z-index:30; display:flex; gap:.6vw;
 }
-/* Frames are placed by their top edge. Ledges are placed by their bottom edge, so
-   the shelf line stays exactly where it was drilled no matter how tall whatever is
-   standing on it turns out to be. Swapping a placeholder for a real photo of the
-   loaded shelf then cannot move the shelf. */
-/* A piece sets exactly one of --y or --b. Anything hung from the ceiling line uses --y;
-   anything standing on, or lining up with, the shelf line uses --b, so the two stay
-   locked together no matter what is on the shelf. */
-.piece.frame,
-.piece.photo{top:var(--y, auto); bottom:var(--b, auto)}
-.piece.ledge{bottom:var(--b)}
-.piece:active{transform:translateZ(var(--z, 1.4vw)) scale(.985)}
+#dots button{
+  width:.75vw; height:.75vw; min-width:7px; min-height:7px; padding:0;
+  border-radius:50%; border:0; cursor:pointer;
+  background:rgba(40,48,42,.28);
+}
+#dots button.on{background:rgba(40,48,42,.62)}
+body.idle #dots{opacity:0; visibility:hidden; transition:opacity .8s, visibility 0s .8s}
 
-/* ---------------- a framed picture, drawn rather than photographed ----------------
-   Moulding, mat, and a recessed opening. The whole illusion is three things:
-   the mat is lighter than the moulding, the moulding casts a hard little shadow
-   down onto the mat, and the print sits below the mat rather than on it. */
-.moulding{
-  padding:var(--mould, 5.4%);
-  border-radius:1.5px;
-  background:linear-gradient(157deg,#fff 0%,#faf9f5 34%,#efede5 72%,#e7e4da 100%);
-  box-shadow:
-    0 0 0 1px rgba(96,94,84,.34),
-    inset 0 1.5px 0 rgba(255,255,255,.98),
-    inset 0 -1.5px 0 rgba(0,0,0,.11),
-    inset 1.5px 0 0 rgba(255,255,255,.55),
-    inset -1.5px 0 0 rgba(0,0,0,.07),
-    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
-    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
-}
-.mat{
-  padding:var(--matV, 10%) var(--matH, 10%);
-  background:linear-gradient(162deg,#fdfdfa 0%,#f7f5ee 60%,#f1efe6 100%);
-  box-shadow:inset 0 .18vw .34vw rgba(0,0,0,.16);
-}
-.opening{
-  position:relative;
-  aspect-ratio:var(--ratio, 1.25);
-  overflow:hidden;
-  background:#ddd;
-  /* the cut edge of the mat board, lit from above */
-  box-shadow:
-    0 0 0 1px rgba(140,134,118,.55),
-    inset 0 .22vw .42vw rgba(0,0,0,.42),
-    inset 0 -.06vw .1vw rgba(255,255,255,.35);
-}
-.opening img{width:100%;height:100%;object-fit:cover}
+/* ---------------- the room ----------------
+   The wall stays. What changed is the material. The old panel was frosted white on a
+   grey-green wall, which is two greys touching: nothing had an edge and nothing had
+   weight, so it read as a template. These are objects instead. One porcelain face, warm
+   enough to separate from the cool drywall, a crisp keyline, a hard contact shadow and a
+   soft ambient one under it. That is what makes a light control look machined rather
+   than drawn.
 
-/* Deep box frame for the card frame and the Shrek print: shallow mat, print sits
-   further back, so the moulding is thinner and the opening shadow is stronger.
-   Named .deep and not .box on purpose, because .box is the story panel's callout and
-   when this was called .box the card frame inherited a 3px black border and a
-   pink drop shadow from it. */
-.piece.deep .mat{background:linear-gradient(160deg,#fcfcf9,#f2f0e8)}
-/* Some pieces are photographs of the real frame, so they are shown whole and get only
-   the wall shadow. Drawing a moulding around a photographed moulding reads as two
-   frames, which is worse than either on its own. */
-.piece.photo img{
-  width:100%; height:auto; border-radius:1.5px;
-  box-shadow:
-    0 var(--lift) calc(var(--lift) * 1.6) rgba(42,48,42,.22),
-    0 var(--cast) calc(var(--cast) * 2.1) rgba(42,48,42,.26);
-}
+   Colour is state and nothing else. Off is porcelain, on is the device's own colour
+   filling the whole object, so what is running is legible from the doorway without
+   touching anything. No decoration is tinted, because then a tint would stop meaning
+   something is on.
 
-.piece.deep .opening{box-shadow:
-  0 0 0 1px rgba(140,134,118,.55),
-  inset 0 .3vw .55vw rgba(0,0,0,.5),
-  inset 0 -.06vw .1vw rgba(255,255,255,.3)}
+   The right third used to be empty. It is now a single tall slab: cover art when the TV
+   is playing, a large clock when it is not, which is what a wall panel is doing for
+   twenty three hours of the day. */
 
-/* ---------------- picture ledge ---------------- */
-.ledge{--shelfh:1.53vw; --z:2.6vw}   /* an ~1.1in ledge lip at WALL_IN=72 */
-.ledge .goods{
-  display:flex; align-items:flex-end; justify-content:center;
-  gap:.3vw; padding:0 .5vw;
-  min-height:6vw;
-}
-/* Books keep their true size and lean on each other if the shelf is too short for them,
-   which is what happens on a real ledge. Shrinking them to fit would have quietly broken
-   the scale that the rest of this layout depends on. */
-.ledge .goods img{flex:0 0 auto; margin-inline:calc(var(--squeeze, 0px) / -2)}
-.ledge .goods img{
-  height:var(--goods-h, 11vw); width:auto; max-width:none;
-  align-self:flex-end;
-  /* Standing on a shelf, lit from above: a tight contact shadow where the book meets
-     the ledge, and a longer one falling back onto the wall behind. */
-  box-shadow:
-    0 .12vw .2vw rgba(30,36,30,.4),
-    .12vw .5vw .9vw rgba(30,36,30,.3);
-}
-.ledge .goods{position:relative}
-/* The slab is 4.62in tall against an 8.7in book, so it stands at 0.53 of the shelf's
-   book height. It was eyeballed at .66 first, which made it taller than a real slab and
-   left it looking like a small book rather than a cased card. */
-.ledge .goods img.front{
-  position:absolute; left:50%; bottom:0; transform:translateX(-50%);
-  height:var(--front-h, 6vw); z-index:2;
-  box-shadow:0 .1vw .18vw rgba(30,36,30,.45), .1vw .4vw .8vw rgba(30,36,30,.34);
-}
-.ledge .goods .frontTodo{
-  position:absolute; left:50%; bottom:0; transform:translateX(-50%); z-index:2;
-  height:var(--front-h, 6vw); aspect-ratio:.61;
-  border:.2vw dashed rgba(60,66,58,.62); background:rgba(250,250,247,.94);
-  display:flex; align-items:center; justify-content:center;
-  font:700 clamp(8px,.72vw,12px)/1 Helvetica,Arial,sans-serif;
-  color:rgba(38,44,38,.66); letter-spacing:.04em; text-transform:uppercase;
-}
-.ledge .shelf img{width:100%; height:100%; object-fit:fill; border-radius:0}
-.ledge .shelf.hasphoto{background:none; box-shadow:
-  0 var(--lift) calc(var(--lift)*1.6) rgba(42,48,42,.24),
-  0 var(--cast) calc(var(--cast)*1.9) rgba(42,48,42,.24)}
-.ledge .shelf{
-  height:var(--shelfh);
-  border-radius:0 0 2px 2px;
-  background:linear-gradient(#fdfdfb 0 38%, #f2f1eb 38% 70%, #e6e4dc 100%);
-  box-shadow:
-    0 0 0 1px rgba(96,94,84,.3),
+.roomwrap{
+  position:absolute; inset:0;
+  padding:2.9vw 3.4vw 3.7vw;
+  display:grid; grid-template-columns:47.7vw minmax(0,1fr); column-gap:3.4vw;
+  align-items:stretch;
+  font-family:system-ui, -apple-system, "SF Pro Display", Helvetica, Arial, sans-serif;
+  color:var(--ri);
+
+  /* Named apart from the global --ink so nothing on page one can be reached by these. */
+  --ri:#141a1b;
+  --ri2:rgba(20,26,27,.60);
+  --ri3:rgba(20,26,27,.46);
+  --hair:rgba(20,26,27,.15);
+
+  /* Every control key in here is exactly --key square. There is no second size. */
+  --key:6.9vw;
+  --kgap:.75vw;
+
+  --face:linear-gradient(180deg,#fdfcf9 0%,#f5f3ed 56%,#eae7de 100%);
+  /* Three inset lines, not one border: a lit top edge, a hairline all round, a shaded
+     bottom lip. Together they read as a moulded part catching the room light. */
+  --edge:
     inset 0 1px 0 rgba(255,255,255,.95),
-    0 var(--lift) calc(var(--lift)*1.6) rgba(42,48,42,.24),
-    0 var(--cast) calc(var(--cast)*1.9) rgba(42,48,42,.24);
+    inset 0 0 0 1px rgba(20,26,27,.07),
+    inset 0 -1px 0 rgba(20,26,27,.13);
+  /* Contact shadow first, then two wider ones. A single soft blur floats; the tight
+     one is what pins the object to the wall. */
+  --drop:
+    0 1px 1.5px rgba(24,32,28,.15),
+    0 4px 9px -3px rgba(24,32,28,.18),
+    0 16px 26px -12px rgba(24,32,28,.28);
+  --drop-lit:
+    0 1px 1.5px rgba(24,32,28,.24),
+    0 6px 13px -4px rgba(24,32,28,.30),
+    0 22px 34px -14px rgba(24,32,28,.40);
 }
 
-/* Stand-in for an artifact whose photograph has not been taken yet. Deliberately
-   plain and obviously provisional: a bad fake is worse than an honest gap, and
-   this way nothing on the wall is ever pretending to be something it is not. */
-.todo{
-  aspect-ratio:var(--ratio, 1.25);
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:.35em; text-align:center; padding:.6em;
-  border:.22vw dashed rgba(60,66,58,.42);
-  border-radius:2px;
-  background:rgba(255,255,255,.30);
-  color:rgba(38,44,38,.66);
+.roomL{display:flex; flex-direction:column; gap:2.5vw; min-width:0; min-height:0}
+
+.roomhead{display:flex; flex-direction:column; align-items:flex-start; gap:.75vw; flex:0 0 auto}
+.roomhead h2{margin:0; font-weight:700; font-size:3.5vw; line-height:1.05; letter-spacing:-.038em; color:var(--ri)}
+
+/* Not a pill with a dot. A tracked caption with a coloured rule in front of it, which
+   carries the same information and does not look like every other dashboard. */
+.bridge{
+  margin:0; display:flex; align-items:center; gap:.62vw; min-width:0;
+  font-weight:700; font-size:.93vw; line-height:1.2; letter-spacing:.145em; text-transform:uppercase;
+  color:var(--ri3);
 }
-.todo b{font:700 clamp(9px,.86vw,15px)/1.2 Helvetica,Arial,sans-serif;letter-spacing:.02em}
-.todo span{font:400 clamp(8px,.7vw,12px)/1.25 Helvetica,Arial,sans-serif;opacity:.8}
-.ledge .todo{width:100%}
+.bridge::before{content:""; flex:0 0 auto; width:2px; height:1.15em; background:#b8871a}
+.bridge.up::before{background:#2c7a4b}
+.bridge.down::before{background:#ac3a22}
+.bridge.down{color:#8d3220}
+.bridge span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+#decks{flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+       justify-content:space-between}
+
+.shelf{min-width:0}
+.shelf > h3, .cluster > h3{
+  display:flex; align-items:center; gap:.85vw; margin:0 0 .95vw;
+  font-weight:700; font-size:.93vw; line-height:1; letter-spacing:.155em; text-transform:uppercase;
+  color:var(--ri3); white-space:nowrap;
+}
+/* The rule runs to the end of whatever it labels, so the two clusters at the bottom
+   declare their own widths instead of both sitting under one anonymous heading. */
+.shelf > h3::after, .cluster > h3::after{content:""; flex:1 1 auto; height:1px; background:var(--hair)}
+
+/* ---- the shared object ---- */
+.card, .key{
+  position:relative; border:0; padding:0; margin:0; cursor:pointer;
+  font:inherit; color:var(--ri); text-align:left;
+  background:var(--face); box-shadow:var(--edge), var(--drop);
+  -webkit-user-select:none; user-select:none;
+  /* transform only. box-shadow and background are never transitioned here because a
+     blur-radius animation on an A14 repaints the whole layer every frame. */
+  transition:transform .11s ease;
+}
+.card:active, .key:active, .card.on, .key.on{transform:translateY(1.5px) scale(.985)}
+.card[disabled], .key[disabled]{opacity:.4; cursor:default}
+.card[disabled]:active, .key[disabled]:active{transform:none}
+
+.glyph{display:block; flex:0 0 auto; color:currentColor}
+.glyph svg{width:100%; height:100%; display:block}
+
+/* ---- sources and the PC ---- */
+.sources{display:grid; grid-template-columns:1fr 1fr; gap:1.1vw}
+.card.src{
+  height:10.4vw; border-radius:1.2vw; padding:1.15vw 1.25vw;
+  display:flex; flex-direction:column; justify-content:space-between;
+}
+.card .glyph{width:2.4vw; height:2.4vw; opacity:.88}
+.card b{display:block; font-weight:700; font-size:1.66vw; line-height:1.12; letter-spacing:-.024em}
+.cstate{
+  display:block; font-weight:700; font-size:.9vw; line-height:1.1; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--ri3);
+}
+.card.src .cstate{margin-top:.42vw}
+
+/* The gaming PC is deliberately a different shape from the two source cards. It is not
+   an input, and a panel that drew it identically would be telling that lie every time
+   anybody looked at it. */
+.card.pcbar{
+  width:100%; height:7.3vw; border-radius:1.2vw; padding:0 1.35vw;
+  display:flex; flex-direction:row; align-items:center; gap:1.15vw;
+}
+.card.pcbar .cstate{margin-left:auto; text-align:right}
+
+.card.live{
+  color:#fff;
+  background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 46%),
+             var(--tint,#1e2427);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.30),
+    inset 0 0 0 1px rgba(0,0,0,.26),
+    var(--drop-lit);
+}
+.card.live .glyph{opacity:1}
+.card.live .cstate{color:rgba(255,255,255,.74)}
+
+/* ---- the two clusters ---- */
+.controls{display:flex; gap:3.1vw; align-items:flex-start}
+.cluster{display:flex; flex-direction:column; min-width:0}
+
+/* A cross, because direction is spatial. In a labelled row you have to read the word
+   "left" before you can press it, which is the whole thing a d-pad exists to avoid. */
+.dpad{display:grid; grid-template-columns:repeat(3, var(--key));
+      grid-template-rows:repeat(3, var(--key)); gap:var(--kgap)}
+.padrow{display:flex; gap:var(--kgap)}
+.stack{display:grid; grid-template-rows:repeat(3, var(--key)); gap:var(--kgap); width:var(--key)}
+/* Volume in the left column, louder above quieter. Same grid, same key size as the rest. */
+.tvgrid{display:grid; grid-template-columns:repeat(2, var(--key));
+        grid-template-rows:repeat(3, var(--key)); gap:var(--kgap)}
+.hole{visibility:hidden}
+
+.key{
+  width:var(--key); height:var(--key); border-radius:1.05vw;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.42vw;
+}
+.key .glyph{width:2.2vw; height:2.2vw; color:rgba(20,26,27,.82)}
+.klab{font-weight:700; font-size:.88vw; line-height:1; letter-spacing:.07em; text-transform:uppercase; color:var(--ri2)}
+.key.arrow{gap:0}
+.key.arrow .glyph{width:1.85vw; height:1.85vw}
+
+/* The centre of the pad is the one dark object on this page that is not a state. It is
+   the click pad of the physical remote, and it gives the cross a middle to aim at. */
+.key.ok{
+  background:linear-gradient(180deg,#333a3d 0%,#1b2124 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.20),
+    inset 0 0 0 1px rgba(0,0,0,.45),
+    var(--drop-lit);
+}
+.key.ok .klab{color:#fff; font-size:1.28vw; letter-spacing:.11em}
+
+.key.live{
+  background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 46%),
+             var(--tint,#a3271f);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.28),
+    inset 0 0 0 1px rgba(0,0,0,.26),
+    var(--drop-lit);
+}
+.key.live .glyph{color:#fff}
+.key.live .klab{color:rgba(255,255,255,.86)}
+
+/* ---- the right slab ---- */
+.np{
+  min-width:0; border-radius:1.5vw; padding:2.2vw 2.2vw 2.4vw;
+  background:var(--face); box-shadow:var(--edge), var(--drop);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.np-top{
+  flex:0 0 auto; display:flex; align-items:center; gap:.85vw;
+  font-weight:700; font-size:.93vw; line-height:1; letter-spacing:.155em; text-transform:uppercase; color:var(--ri3);
+}
+.np-top::after{content:""; flex:1 1 auto; height:1px; background:var(--hair)}
+
+/* The sleeve sits on the slab with its own shadow rather than being a panel region,
+   so it reads as a thing placed there. */
+.np-art{
+  position:relative; flex:1 1 auto; min-height:0; margin-top:1.5vw; width:100%;
+  border-radius:.45vw; overflow:hidden;
+  background:linear-gradient(152deg,#2f383f 0%,#151a1e 72%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,.45),
+    0 2px 4px rgba(20,26,27,.22),
+    0 16px 28px -12px rgba(20,26,27,.50);
+}
+.np-art img{width:100%; height:100%; object-fit:contain; display:none}
+.np-art.has img{display:block}
+.np-art.has .np-fb{opacity:0}
+.np-fb{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-weight:600; font-size:9vw; line-height:1; letter-spacing:-.05em; color:rgba(255,255,255,.24);
+}
+
+.np-meta{flex:0 0 auto; margin-top:1.7vw}
+.np-meta b{
+  font-weight:700; font-size:2.55vw; line-height:1.12; letter-spacing:-.032em; color:var(--ri);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.np-meta span{
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  margin-top:.6vw; font-weight:500; font-size:1.22vw; line-height:1.32; color:var(--ri2);
+}
+
+.np-prog{flex:0 0 auto; margin-top:1.5vw}
+.np-track{
+  height:.52vw; min-height:5px; border-radius:.18vw; overflow:hidden;
+  background:rgba(20,26,27,.14); box-shadow:inset 0 1px 1px rgba(20,26,27,.16);
+}
+/* scaleX, not width: a width transition relayouts, a transform does not. */
+.np-fill{display:block; width:100%; height:100%; background:var(--ri);
+         transform:scaleX(0); transform-origin:left center; transition:transform .4s var(--ease)}
+.np-times{
+  display:flex; justify-content:space-between; margin-top:.78vw;
+  font-weight:700; font-size:.9vw; line-height:1; letter-spacing:.11em; color:var(--ri3);
+  font-variant-numeric:tabular-nums;
+}
+
+.np-clock{display:none; flex:1 1 auto; min-height:0; flex-direction:column; justify-content:center}
+/* The note lives with the clock, not pinned to the floor, so the whole date block reads
+   as one mass centred on the slab instead of two things at opposite ends of a void. */
+.np-note{margin-top:1.9vw}
+.np-note{display:none; flex:0 0 auto; font-weight:700; font-size:.93vw; line-height:1; letter-spacing:.155em;
+         text-transform:uppercase; color:var(--ri3)}
+.np.clock .np-art, .np.clock .np-meta, .np.clock .np-prog{display:none}
+.np.clock .np-clock{display:flex}
+.np.clock .np-note{display:block}
+
+.cl-time{
+  display:flex; align-items:baseline; gap:.7vw;
+  font-weight:600; font-size:13.6vw; line-height:.84; letter-spacing:-.055em; color:var(--ri);
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.cl-ampm{font-size:2.4vw; font-weight:700; letter-spacing:.09em; color:var(--ri3)}
+.cl-date{
+  margin-top:1.7vw; padding-top:1.6vw; border-top:1px solid var(--hair);
+  font-weight:600; font-size:1.9vw; line-height:1.2; letter-spacing:-.014em; color:var(--ri2);
+}
 
 /* ============================ story panel ============================ */
 
@@ -463,7 +603,13 @@ body.story-open #story{transform:none; visibility:visible}
   transition:opacity 1.6s var(--ease);
 }
 body.idle #dim{opacity:var(--dim,.34)}
-body.idle #plane{opacity:0; pointer-events:none}
+/* visibility, not just opacity. At opacity 0 the pieces are invisible but still
+   composited every frame the compositor wakes for; hiding them drops the whole subtree
+   out of the render tree. The delayed visibility transition lets the fade finish first.
+   On a panel that is lit for eighteen hours a day, free is worth having. */
+body.idle #plane{opacity:0; visibility:hidden; pointer-events:none;
+                 transition:opacity .7s var(--ease), visibility 0s linear .7s}
+#plane{visibility:visible; transition:opacity .7s var(--ease), visibility 0s}
 body.idle #wall::after{opacity:.5}
 
 /* ============================ panels ============================ */
@@ -522,8 +668,38 @@ body.idle #wall::after{opacity:.5}
 
 <div id="stage"><div id="scene">
   <div id="wall"></div>
-  <div id="plane"></div>
+  <div id="pages">
+    <section class="page" id="page-wall" style="--i:0"><div id="plane"></div></section>
+    <section class="page" id="page-room" style="--i:1">
+      <div class="roomwrap">
+        <div class="roomL">
+          <header class="roomhead">
+            <h2>The room</h2>
+            <p class="bridge" id="bridgeState"><span id="bridgeText">looking for the bridge</span></p>
+          </header>
+          <div id="decks"></div>
+        </div>
+        <!-- Starts in the clock state, because that is what is true until the bridge
+             says otherwise, and an empty artwork frame would be worse than no frame. -->
+        <aside class="np clock" id="np">
+          <div class="np-top"><span id="npKick">Now playing</span></div>
+          <div class="np-art" id="npArt"><img id="npImg" alt=""><div class="np-fb" id="npFb"></div></div>
+          <div class="np-meta"><b id="npTitle"></b><span id="npSub"></span></div>
+          <div class="np-prog">
+            <div class="np-track"><i class="np-fill" id="npFill"></i></div>
+            <div class="np-times"><span id="npPos"></span><span id="npRem"></span></div>
+          </div>
+          <div class="np-clock">
+            <div class="cl-time"><span id="clTime">00:00</span><span class="cl-ampm" id="clAm"></span></div>
+            <div class="cl-date" id="clDate"></div>
+            <div class="np-note">Nothing is playing</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
 </div></div>
+<div id="dots"><button data-page="0" class="on" aria-label="The wall"></button><button data-page="1" aria-label="The room"></button></div>
 
 <div id="story" aria-hidden="true">
   <div id="storyTop">
@@ -559,6 +735,14 @@ body.idle #wall::after{opacity:.5}
   <div class="row">
     <label>Idle after: <span class="val" id="setIdleVal"></span></label>
     <input type="range" id="setIdle" min="1" max="60" step="1">
+  </div>
+  <div class="row">
+    <label>Bridge address</label>
+    <input type="text" id="setBridge" inputmode="url" autocapitalize="off" autocorrect="off"
+           spellcheck="false" placeholder="https://raspberrypi.local:8443"
+           style="width:100%;padding:.5rem;border:2px solid #000;font:inherit">
+    <p class="hint" style="margin:.35rem 0 0">The Pi running <code>bridge/</code>. Must be
+      https, or Safari will block it from this page.</p>
   </div>
   <div class="row" id="offlineRow">
     <label>Offline</label>
@@ -887,7 +1071,7 @@ const byKey = k => PIECES.find(p => p.key === k);
 
 /* ====================== settings ====================== */
 
-const DEFAULTS = { wall:'#c6d1cf', dim:34, idleMin:15 };
+const DEFAULTS = { wall:'#c6d1cf', dim:34, idleMin:15, bridge:'' };
 let cfg = Object.assign({}, DEFAULTS);
 
 function loadCfg(){
@@ -1317,6 +1501,348 @@ function scoreboard(){
   return sec;
 }
 
+/* ====================== the room ======================
+
+   Every control here goes through a bridge on the LAN, because none of these devices can
+   be reached from a browser at all:
+
+     Apple TV   proprietary Companion/MRP protocol with a pairing handshake. No web API
+                exists, in any browser.
+     Samsung    does have a WebSocket API, but it is served with a self-signed certificate
+                on wss://, which Safari refuses, and there is no way to accept a certificate
+                exception for a WebSocket the way there is for a page. Its plaintext port
+                is blocked by mixed-content rules.
+     the PCs    Wake-on-LAN is a raw UDP broadcast. Browsers have no UDP.
+
+   So bridge/ runs on the Pi and does all of it over HTTPS, and this file only ever speaks
+   JSON to that. If the bridge is not answering, the room page says so plainly rather than
+   leaving dead buttons that look like they might work.
+   ====================================================================== */
+
+const ICON = {
+  apple: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 1.43c0 1.14-.42 2.2-1.25 3.02-.99.99-2.09 1.56-3.28 1.47-.02-.13-.04-.27-.04-.42 0-1.09.47-2.24 1.28-3.05.4-.41.92-.75 1.56-1.03.63-.27 1.23-.42 1.79-.44.01.15.02.3.02.45zM20.9 17.13c-.32.73-.7 1.4-1.14 2.02-.6.85-1.09 1.44-1.47 1.77-.59.54-1.22.82-1.9.84-.48 0-1.07-.14-1.75-.42-.68-.28-1.31-.42-1.88-.42-.6 0-1.24.14-1.93.42-.69.28-1.25.43-1.67.44-.65.03-1.29-.26-1.92-.86-.41-.36-.92-.97-1.53-1.83-.65-.92-1.19-1.99-1.61-3.21-.45-1.32-.68-2.6-.68-3.83 0-1.42.31-2.64.92-3.66.48-.82 1.12-1.47 1.92-1.94.8-.47 1.66-.71 2.59-.73.51 0 1.19.16 2.02.47.83.31 1.37.47 1.6.47.18 0 .77-.19 1.78-.55.95-.34 1.75-.48 2.41-.42 1.78.14 3.12.85 4.01 2.11-1.59.96-2.38 2.31-2.36 4.04.01 1.35.5 2.47 1.47 3.36.44.42.93.74 1.48.97-.12.35-.25.68-.38 1z"/></svg>',
+  gpu:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="8.5" cy="12" r="2.6"/><circle cx="16" cy="12" r="1.6"/><path d="M5 21v-3M19 21v-3"/></svg>',
+  steam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><circle cx="15.4" cy="9" r="2.9"/><circle cx="8.4" cy="14.6" r="2.1"/><path d="M10.2 13.1l3.1-2"/></svg>',
+  up:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 6l7 9H5z"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 18l-7-9h14z"/></svg>',
+  left:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 12l9-7v14z"/></svg>',
+  right:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 12l-9 7V5z"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h3.4v16H7zm6.6 0H17v16h-3.4z"/></svg>',
+  power:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.6 6.6a8 8 0 1 0 10.8 0"/></svg>',
+  mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>',
+  volup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
+  voldn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><path d="M8 21h8"/></svg>',
+  source:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>',
+  ok:'OK'
+};
+
+/* Sources first and biggest, because "put the Steam Machine on" is what anyone actually
+   walks up to this for. Each one reports whether it is the live input, so the panel
+   answers the question before it is touched.
+
+   The gaming PC is not in that row. It is a separate machine on its own monitors, and a
+   panel that drew it as a third input would be lying every time anybody looked at it. It
+   gets its own heading and its own shape.
+
+   Tints are the devices' own colours: Apple TV graphite, Steam navy, the PC's case
+   lighting, the TV's power red. Nothing else on this page is coloured, so a colour
+   always means "this is on". */
+const SOURCES = [
+  { device:'inputs', action:'hdmi1', label:'Apple TV', sub:'HDMI 1', live:'On the TV now',
+    icon:'apple', tint:'#1e2427', state:'input:hdmi1' },
+  { device:'inputs', action:'hdmi3', label:'Steam Machine', sub:'HDMI 3', live:'On the TV now',
+    icon:'steam', tint:'#123c5c', state:'input:hdmi3' }
+];
+const GAMING = { device:'pcs', action:'wake_gaming', label:'Gaming PC',
+  sub:'Asleep, tap to wake', live:'Awake', icon:'gpu', tint:'#42277d', state:'pc:gaming' };
+
+const APPLETV = {
+  pad:{ device:'appletv', up:'up', down:'down', left:'left', right:'right', mid:'select' },
+  keys:[ { device:'appletv', action:'menu', icon:'menu', label:'Back' },
+         { device:'appletv', action:'home', icon:'home', label:'Home' },
+         { device:'appletv', action:'play_pause', icon:'play', label:'Play' } ]
+};
+/* Read down the columns: volume, then the rest. Louder is above quieter because that is
+   where the finger expects it, not because it fits the grid. */
+const TVKEYS = [
+  { device:'tv', action:'volume_up',   icon:'volup', label:'Louder' },
+  { device:'tv', action:'power',  icon:'power', label:'Power', tint:'#a3271f', state:'tv:on' },
+  { device:'tv', action:'volume_down', icon:'voldn', label:'Quieter' },
+  { device:'tv', action:'mute',   icon:'mute',  label:'Mute',  tint:'#9a6510', state:'tv:muted' },
+  { device:'tv', action:'source', icon:'source', label:'Source' },
+  { device:'tv', action:'home',   icon:'home',  label:'Hub' }
+];
+
+const decksEl = $('#decks');
+const stateful = [];              // controls that reflect something, redrawn from /state
+
+const glyph = name => '<span class="glyph">' + (ICON[name] || '') + '</span>';
+
+/* One place where a control is armed, so a card and a key cannot drift apart in how they
+   report state or send a command. */
+function arm(node, k){
+  node.type = 'button';
+  node.setAttribute('aria-label', k.label || k.action);
+  if (k.tint) node.style.setProperty('--tint', k.tint);
+  if (k.state){
+    node.dataset.state = k.state;
+    node.dataset.rest = k.sub || '';
+    node.dataset.busy = k.live || '';
+    stateful.push(node);
+  }
+  node.addEventListener('click', () => send(k.device, k.action, node));
+  return node;
+}
+
+function srcCard(k){
+  return arm(el('button', 'card src', glyph(k.icon) +
+    '<span><b>' + esc(k.label) + '</b>' +
+    '<span class="cstate">' + esc(k.sub) + '</span></span>'), k);
+}
+function pcCard(k){
+  return arm(el('button', 'card pcbar', glyph(k.icon) +
+    '<b>' + esc(k.label) + '</b><span class="cstate">' + esc(k.sub) + '</span>'), k);
+}
+function keyBtn(k, cls){
+  return arm(el('button', 'key' + (cls ? ' ' + cls : ''),
+    (k.icon ? glyph(k.icon) : '') +
+    (k.text ? '<span class="klab">' + esc(k.text) + '</span>' : '') +
+    (k.label && !k.text && !k.bare ? '<span class="klab">' + esc(k.label) + '</span>' : '')), k);
+}
+
+function shelf(title, body){
+  const s = el('section', 'shelf');
+  s.appendChild(el('h3', null, esc(title)));
+  s.appendChild(body);
+  return s;
+}
+
+const srcRow = el('div', 'sources');
+SOURCES.forEach(k => srcRow.appendChild(srcCard(k)));
+decksEl.appendChild(shelf('On the TV', srcRow));
+decksEl.appendChild(shelf('On its own monitors', pcCard(GAMING)));
+
+const controls = el('div', 'controls');
+
+const atv = el('div', 'cluster');
+atv.appendChild(el('h3', null, 'Apple TV'));
+const pad = el('div', 'dpad');
+const d = APPLETV.pad;
+const arrow = (action, icon, label) =>
+  keyBtn({device:d.device, action, icon, label, bare:true}, 'arrow');
+pad.append(
+  el('div', 'hole'), arrow(d.up, 'up', 'Up'), el('div', 'hole'),
+  arrow(d.left, 'left', 'Left'),
+  keyBtn({device:d.device, action:d.mid, text:'OK', label:'Select'}, 'ok'),
+  arrow(d.right, 'right', 'Right'),
+  el('div', 'hole'), arrow(d.down, 'down', 'Down'), el('div', 'hole'));
+const stack = el('div', 'stack');
+APPLETV.keys.forEach(k => stack.appendChild(keyBtn(k)));
+const padrow = el('div', 'padrow');
+padrow.append(pad, stack);
+atv.appendChild(padrow);
+
+const tv = el('div', 'cluster');
+tv.appendChild(el('h3', null, 'TV'));
+const tvgrid = el('div', 'tvgrid');
+TVKEYS.forEach(k => tvgrid.appendChild(keyBtn(k)));
+tv.appendChild(tvgrid);
+
+controls.append(atv, tv);
+decksEl.appendChild(controls);
+
+/* ---------------- now playing, and the clock behind it ---------------- */
+
+const npEl = $('#np'), npArt = $('#npArt'), npImg = $('#npImg');
+const clTime = $('#clTime'), clAm = $('#clAm'), clDate = $('#clDate'), npKick = $('#npKick');
+let artUrl = '';
+
+/* mmss in the helpers rolls an hour into minutes, which turns a film into "104:12". */
+const hms = s => {
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) + ':' +
+         String(sec).padStart(2, '0');
+};
+
+/* Built once. Constructing an Intl formatter inside the tick is real work on an A14 and
+   it happens every second for as long as the panel is awake. */
+const H12 = new Intl.DateTimeFormat().resolvedOptions().hour12 !== false;
+const fmtTime = new Intl.DateTimeFormat(undefined, {hour:'numeric', minute:'2-digit', hour12:H12});
+const fmtDay  = new Intl.DateTimeFormat(undefined, {weekday:'long'});
+const fmtDate = new Intl.DateTimeFormat(undefined, {day:'numeric', month:'long', year:'numeric'});
+
+/* system-ui is SF Pro on the iPad and something wider everywhere else, so a fixed size
+   either clips on one and looks timid on the other. Measured once per distinct time
+   string, which is twice a day at most, not once a second. */
+const clRow = document.querySelector('.cl-time');
+let clFit = '';
+function fitClock(){
+  const sig = clTime.textContent.length + '/' + clAm.textContent.length;
+  if (sig === clFit) return;
+  const room = clRow.clientWidth;
+  if (!room) return;                       // laid out but not shown yet, try again later
+  clFit = sig;
+  clRow.style.fontSize = '';
+  const need = clRow.scrollWidth;
+  if (need > room){
+    const base = parseFloat(getComputedStyle(clRow).fontSize);
+    clRow.style.fontSize = (base * room / need * .995).toFixed(1) + 'px';
+  }
+}
+
+function paintClock(){
+  const now = new Date();
+  let t = fmtTime.format(now), ap = '';
+  /* The meridiem is split off so the numerals can stay enormous and it can sit small
+     beside them, instead of dragging the whole line down a size to fit. */
+  const m = t.match(/\s*([AaPp]\.?\s?[Mm]\.?)$/);
+  if (m){ ap = m[1].replace(/[.\s]/g, '').toUpperCase(); t = t.slice(0, m.index); }
+  clTime.textContent = t.trim();
+  clAm.textContent = ap;
+  npKick.textContent = fmtDay.format(now);
+  clDate.textContent = fmtDate.format(now);
+  fitClock();
+}
+
+let clockTimer = null;
+function startClock(){
+  paintClock();
+  if (clockTimer) return;
+  clockTimer = setInterval(() => {
+    /* The only repeating timer in the file, and it retires itself the moment the panel
+       goes idle. A wall nobody is looking at should not wake the CPU every second all
+       night; wake() starts it again. */
+    if (document.body.classList.contains('idle')){ stopClock(); return; }
+    paintClock();
+  }, 1000);
+}
+function stopClock(){ if (clockTimer){ clearInterval(clockTimer); clockTimer = null; } }
+
+function paintNowPlaying(np){
+  const on = !!(np && (np.title || np.artwork));
+  npEl.classList.toggle('clock', !on);
+  if (!on){ startClock(); return; }
+  stopClock();
+  npKick.textContent = 'Now playing';
+  $('#npTitle').textContent = np.title || '';
+  $('#npSub').textContent = np.subtitle || '';
+  $('#npFb').textContent = (np.title || '').trim().charAt(0).toUpperCase() || '♪';
+  /* Only touch src when the URL actually changed, or every poll restarts the decode and
+     the artwork visibly blinks. */
+  const art = np.artwork || '';
+  if (art !== artUrl){
+    artUrl = art;
+    if (art) npImg.src = art; else npImg.removeAttribute('src');
+    npArt.classList.toggle('has', !!art);
+  }
+  const dur = Math.max(0, +np.duration || 0);
+  const pos = Math.max(0, Math.min(+np.position || 0, dur || Infinity));
+  $('#npFill').style.transform = 'scaleX(' + (dur ? (pos / dur).toFixed(4) : 0) + ')';
+  $('#npPos').textContent = dur ? hms(pos) : '';
+  $('#npRem').textContent = dur ? '−' + hms(dur - pos) : '';
+}
+/* A bridge that hands over a dead artwork URL should fall back to the lettered sleeve
+   rather than leave a broken image on the wall. */
+npImg.addEventListener('error', () => { npArt.classList.remove('has'); artUrl = ''; });
+
+/* Paint what is actually on. A panel that only offers buttons makes you press one to find
+   out what was already happening, which is the thing every wall-panel guide warns about. */
+function paintState(st){
+  stateful.forEach(t => {
+    const [kind, want] = t.dataset.state.split(':');
+    let live = false;
+    if (kind === 'input') live = !!(st && st.input === want);
+    if (kind === 'tv') live = !!(st && (want === 'on' ? st.tv_on : st.muted));
+    if (kind === 'pc') live = !!(st && st.pcs && st.pcs[want]);
+    t.classList.toggle('live', live);
+    const sub = t.querySelector('.cstate');
+    if (sub && t.dataset.busy) sub.textContent = live ? t.dataset.busy : t.dataset.rest;
+  });
+  paintNowPlaying(st && st.now_playing);
+}
+
+/* ---------------- talking to the bridge ---------------- */
+
+const bridgeEl = $('#bridgeState');
+const bridgeTx = $('#bridgeText');
+let bridgeUp = false;
+
+function bridgeUrl(path){
+  const base = (cfg.bridge || '').replace(/\/+$/, '');
+  return base ? base + path : null;
+}
+
+function setBridge(up, text){
+  bridgeUp = up;
+  bridgeEl.className = 'bridge ' + (up ? 'up' : 'down');
+  bridgeTx.textContent = text;
+  decksEl.querySelectorAll('.card, .key').forEach(b => { b.disabled = !up; });
+}
+
+async function pingBridge(){
+  const u = bridgeUrl('/health');
+  if (!u){ setBridge(false, 'no bridge address set. Long-press the wall to add one.'); return; }
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch(u, {signal: ctl.signal, cache: 'no-store'});
+    clearTimeout(t);
+    const j = await r.json();
+    setBridge(true, j.devices ? j.devices.join(' \u00b7 ') : 'bridge up');
+    paintState(j.state);
+  } catch (e) {
+    setBridge(false, 'bridge not answering');
+  }
+}
+
+let sending = false;
+async function send(device, action, btn){
+  if (!bridgeUp || sending) return;
+  const u = bridgeUrl('/cmd');
+  if (!u) return;
+  sending = true;
+  btn.classList.add('on');
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 4000);
+    const r = await fetch(u, {method:'POST', signal: ctl.signal,
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({device, action})});
+    clearTimeout(t);
+    if (!r.ok) throw new Error(r.status);
+  } catch (e) {
+    setBridge(false, 'that command did not go through');
+    setTimeout(pingBridge, 1500);
+  } finally {
+    sending = false;
+    setTimeout(() => btn.classList.remove('on'), 160);
+  }
+}
+
+/* ---------------- pages ---------------- */
+
+const pagesEl = $('#pages');
+const pageEls = [...document.querySelectorAll('.page')];
+let page = 0;
+
+function setPage(n){
+  page = Math.max(0, Math.min(pageEls.length - 1, n));
+  pagesEl.style.setProperty('--page', page);
+  pageEls.forEach((el2, i) => el2.classList.toggle('here', i === page));
+  document.querySelectorAll('#dots button').forEach((b, i) =>
+    b.classList.toggle('on', i === page));
+  if (page === 1) pingBridge();
+  resetIdle();
+}
+document.querySelectorAll('#dots button').forEach(b =>
+  b.addEventListener('click', () => setPage(+b.dataset.page)));
+/* setPage is NOT called here. It calls resetIdle(), and idleTimer is a `let` declared
+   further down, so running it at this point dies in the temporal dead zone. It is called
+   from the boot block at the end instead, once everything exists. */
+
 /* ====================== looking around ======================
    Drag anywhere on the wall and the camera leans. It springs back on release, because
    this is a wall, not a viewer: it should always settle to square-on so it goes back to
@@ -1332,7 +1858,8 @@ const stage = $('#stage');
 const MAX_TILT = 7;          // degrees. More than this and the illusion breaks down.
 const DRAG_PX = 10;
 
-let dragFrom = null, dragging = false, swallowClick = false;
+let dragFrom = null, dragging = false, swallowClick = false, swiping = false;
+const SWIPE_PX = 55;        // past this, a horizontal drag is a page change
 
 function setTilt(rx, ry){
   scene.style.setProperty('--rx', rx.toFixed(2) + 'deg');
@@ -1352,12 +1879,26 @@ function tiltStart(e){
   if (idle) return;                       // the first touch is for waking up
   dragFrom = {x:e.clientX, y:e.clientY};
   dragging = false;
+  swiping = false;
 }
 
 function tiltMove(e){
   if (!dragFrom) return;
   const dx = e.clientX - dragFrom.x;
   const dy = e.clientY - dragFrom.y;
+
+  /* A decidedly sideways drag is a page change, not a lean. Requiring it to be 1.4 times
+     more horizontal than vertical is what stops a diagonal look-around from flipping the
+     page out from under you. Once it is a swipe it stays one for the rest of the gesture,
+     so the wall does not lurch between the two behaviours mid-drag. */
+  if (!swiping && Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 1.4){
+    swiping = true;
+    dragging = false;
+    scene.classList.remove('dragging');
+    setTilt(0, 0);
+  }
+  if (swiping) return;
+
   if (!dragging){
     if (Math.hypot(dx, dy) < DRAG_PX) return;
     dragging = true;
@@ -1369,10 +1910,15 @@ function tiltMove(e){
           clamp(dx / (innerWidth / 2) * MAX_TILT));
 }
 
-function tiltEnd(){
-  if (dragging) swallowClick = true;      // this gesture was a look, not a tap
+function tiltEnd(e){
+  if (swiping && dragFrom && e){
+    const dx = e.clientX - dragFrom.x;
+    setPage(page + (dx < 0 ? 1 : -1));
+  }
+  if (dragging || swiping) swallowClick = true;   // a look or a swipe, not a tap
   dragFrom = null;
   dragging = false;
+  swiping = false;
   scene.classList.remove('dragging');
   setTilt(0, 0);
 }
@@ -1443,7 +1989,13 @@ function armLongPress(e){
   /* Only on bare wall, so it can never be reached by mashing a picture. #plane covers the
      whole panel above #wall, so in practice that is the usual target; #stage and #scene
      are here too because a tilt can put either of them under the finger. */
-  const bare = ['wall', 'plane', 'stage', 'scene', 'dim'].includes(e.target.id);
+  /* Adding the pager put #page-wall between the wall and the finger, so taps on bare
+     drywall started landing on an element that was not in this list and long-press broke
+     a second time. Matching by prefix as well means a new page cannot silently break it
+     again. */
+  const id = e.target.id || '';
+  const bare = ['wall', 'plane', 'stage', 'scene', 'dim'].includes(id) ||
+               id.startsWith('page-');
   if (!bare) return;
   pressFrom = {x: e.clientX, y: e.clientY};
   clearTimeout(pressTimer);
@@ -1465,6 +2017,7 @@ function openSettings(){
   if (idle){ idle = false; document.body.classList.remove('idle'); }
   $('#setColor').value = cfg.wall;
   $('#setColorVal').textContent = cfg.wall.toUpperCase();
+  $('#setBridge').value = cfg.bridge || '';
   $('#setDim').value = cfg.dim;
   $('#setDimVal').textContent = cfg.dim + '%';
   $('#setIdle').value = cfg.idleMin;
@@ -1511,6 +2064,11 @@ $('#setColor').addEventListener('input', e => {
   cfg.wall = e.target.value; applyCfg();
   $('#setColorVal').textContent = cfg.wall.toUpperCase();
   markSwatch();
+});
+$('#setBridge').addEventListener('change', e => {
+  cfg.bridge = e.target.value.trim();
+  saveCfg();
+  pingBridge();
 });
 $('#setDim').addEventListener('input', e => {
   cfg.dim = +e.target.value; applyCfg();
@@ -1599,6 +2157,7 @@ $('#setCache').addEventListener('click', () => {
 /* ====================== go ====================== */
 
 loadCfg();
+setPage(0);
 resetIdle();
 </script>
 </body>
